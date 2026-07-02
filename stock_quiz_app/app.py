@@ -1200,7 +1200,14 @@ def profile_page():
     """, (session["user_id"],))
     total_earnings = cursor.fetchone()["total"] or 0.0
     
-    return render_template("profile.html", user=user_info, attempts=attempts, total_earnings=total_earnings)
+    cursor.execute("""
+        SELECT * FROM transactions
+        WHERE user_id = ?
+        ORDER BY date DESC
+    """, (session["user_id"],))
+    transactions = cursor.fetchall()
+    
+    return render_template("profile.html", user=user_info, attempts=attempts, total_earnings=total_earnings, transactions=transactions)
 
 @app.route("/api/user/upi", methods=["POST"])
 @login_required

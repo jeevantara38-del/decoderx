@@ -2,7 +2,7 @@
 {% block title %}Profile — DECODER{% endblock %}
 
 {% block content %}
-<div class="container" style="max-width: 1200px; padding: 20px;">
+<div class="container" style="max-width: 1200px; padding: 20px; padding-bottom: 80px;">
     <h2 class="dash-title">My Profile</h2>
     <p class="dash-sub">Manage your account and view history</p>
 
@@ -22,18 +22,17 @@
         </div>
     </div>
     
-    <!-- Admin & Logout Actions -->
-    <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
-        {% if user.role == 'admin' or session.get('admin') %}
-            <a href="{{ url_for('admin_dashboard') }}" class="btn-cyber secondary" style="flex: 1; text-align: center; text-decoration: none; padding: 12px; font-size: 1rem; border-radius: 12px;">Admin Console</a>
-        {% endif %}
-        <a href="{{ url_for('logout') }}" class="btn-cyber danger" style="flex: 1; text-align: center; text-decoration: none; padding: 12px; font-size: 1rem; border-radius: 12px;">Logout</a>
+    <!-- Admin Console Button (Only for Admins) -->
+    {% if user.role == 'admin' or session.get('admin') %}
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn-cyber secondary" style="display: block; text-align: center; text-decoration: none; padding: 12px; font-size: 1rem; border-radius: 12px;">Admin Console</a>
     </div>
+    {% endif %}
 
-    <!-- User Attempt History -->
+    <!-- My Performance Section -->
     <div class="glass comp-card" style="padding: 20px; margin-top: 30px;">
-        <h3 class="section-title">My Attempts</h3>
-        <div class="table-responsive" style="max-height: 300px; overflow-y: auto; margin-top: 15px;">
+        <h3 class="section-title">My Performance</h3>
+        <div class="table-responsive" style="max-height: 250px; overflow-y: auto; margin-top: 15px;">
             <table class="admin-table" style="width: 100%;">
                 <thead>
                     <tr>
@@ -66,5 +65,54 @@
             </table>
         </div>
     </div>
+
+    <!-- Rewards Ledger Section -->
+    <div class="glass comp-card" style="padding: 20px; margin-top: 30px;">
+        <h3 class="section-title">Rewards Ledger</h3>
+        <div class="table-responsive" style="max-height: 250px; overflow-y: auto; margin-top: 15px;">
+            <table class="admin-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if transactions %}
+                        {% for tx in transactions %}
+                            <tr>
+                                <td style="font-size: 0.8rem; color: var(--text-sub);">
+                                    {{ (tx.date|string)[:16] }}
+                                </td>
+                                <td style="font-weight: 600; color: var(--teal);">
+                                    &#8377;{{ "%.2f"|format(tx.amount) }}
+                                </td>
+                                <td style="font-size: 0.85rem;">
+                                    {% if tx.status == 'Paid' %}
+                                        <span style="color: #4ade80;">{{ tx.status }}</span>
+                                    {% else %}
+                                        <span style="color: #facc15;">{{ tx.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 15px; font-size: 0.85rem;">
+                                No rewards registered yet. Win quizzes to earn!
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Logout Button -->
+    <div style="margin-top: 40px; margin-bottom: 20px;">
+        <a href="{{ url_for('logout') }}" class="btn-cyber danger" style="display: block; text-align: center; text-decoration: none; padding: 12px; font-size: 1rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">Logout</a>
+    </div>
+
 </div>
 {% endblock %}
