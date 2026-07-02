@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "stock_quiz_app/app.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "stock_quiz_app/static/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "stock_quiz_app/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "stock_quiz_app/app.py"
+    }
+  ]
+}

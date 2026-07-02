@@ -1,0 +1,17 @@
+.vercel
+.env
+.env.*
+!.env.example
+
+# Sensitive credentials
+client_id.txt
+client_secret.txt
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs and cache
+*.log
+scratch/
+__pycache__/
+.vscode/

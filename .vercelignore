@@ -1,0 +1,14 @@
+# Database and logs
+*.db  
+*.log  
+
+# Environment and sensitive keys
+.env
+.env.*
+client_id.txt
+client_secret.txt
+
+# Development files
+scratch/  
+__pycache__/ 
+.vscode/

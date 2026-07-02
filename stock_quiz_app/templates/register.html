@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - DECODER{% endblock %}
+
+{% block extra_head %}
+<style>
+.flash-msg-success { color: var(--teal); background: rgba(0, 255, 204, 0.1); }
+.flash-msg-error { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); }
+.flash-msg-danger { color: #ff4d4d; background: rgba(255, 77, 77, 0.1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+    <div class="auth-logo">
+        <div class="auth-logo-icon" style="filter: drop-shadow(0 4px 12px var(--teal-dim));">
+            <img src="{{ url_for('static', filename='decoder_logo.png') }}" alt="DECODER Logo" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px;" loading="lazy">
+        </div>
+        <div class="auth-brand">DE<span>C</span>ODER</div>
+        <div class="auth-tagline">Join the trading community &amp;<br/>compete for reward pools</div>
+    </div>
+
+    <div class="glass auth-card">
+        <div class="auth-title">Create Account</div>
+        <div class="auth-sub" id="step-subtitle">Fill in your details below</div>
+        
+        <form method="POST" action="{{ url_for('register') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="form-group" id="fg-name">
+                <input type="text" id="reg-name" name="fullname" autocomplete="name" oninput="checkVal('fg-name','reg-name')" onfocus="checkVal('fg-name','reg-name')" onblur="checkVal('fg-name','reg-name')">
+                <label>Full Name</label>
+            </div>
+
+            <div class="form-group" id="fg-email" style="margin-top: 20px;">
+                <input type="email" id="reg-email" name="email" required autocomplete="email" oninput="checkVal('fg-email','reg-email')" onfocus="checkVal('fg-email','reg-email')" onblur="checkVal('fg-email','reg-email')">
+                <label>Email Address</label>
+            </div>
+            
+            <div class="form-group" id="fg-password" style="margin-top: 20px;">
+                <input type="password" id="reg-password" name="password" required autocomplete="new-password" oninput="checkVal('fg-password','reg-password')" onfocus="checkVal('fg-password','reg-password')" onblur="checkVal('fg-password','reg-password')">
+                <label>Password</label>
+            </div>
+            
+            <div style="margin-bottom:24px;"></div>            
+            <button type="submit" class="btn-primary">Create Account</button>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div style="margin-top: 15px;">
+                {% for category, message in messages %}
+                  <div class="otp-error flash-msg-{{ category }}" style="display: block; padding: 10px; border-radius: 8px; text-align: center;">{{ message }}</div>
+                {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+        </form>
+        
+        <div class="link-row mt12">
+            Already registered? <a href="{{ url_for('login') }}">Login here</a>
+        </div>
+        
+        <div class="divider"><span>OR</span></div>
+
+        <a href="{{ url_for('google_login') }}" class="btn-google-premium google-auth-btn">
+            <svg class="g-icon-premium" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.27 9.76A7.08 7.08 0 0 1 12 4.9c1.76 0 3.35.63 4.59 1.67l3.43-3.43A11.97 11.97 0 0 0 12 1C8.19 1 4.88 3.03 3.06 6.09l2.21 3.67Z"/><path fill="#34A853" d="M16.04 18.01A7.07 7.07 0 0 1 12 19.1a7.08 7.08 0 0 1-6.72-4.84l-3.68 2.21A11.97 11.97 0 0 0 12 23c3.58 0 6.79-1.46 9.14-3.82l-5.1-1.17Z"/><path fill="#FBBC05" d="M5.28 14.26A7.03 7.03 0 0 1 4.9 12c0-.8.13-1.57.37-2.29L3.06 6.09A11.97 11.97 0 0 0 0 12c0 2.06.52 4 1.44 5.69l3.84-3.43Z"/><path fill="#4285F4" d="M23 12c0-.7-.06-1.37-.18-2.03H12v4h6.18a5.27 5.27 0 0 1-2.28 3.46l5.1 1.17A11.97 11.97 0 0 0 23 12Z"/></svg>
+            Continue with Google
+            <div class="auth-spinner"></div>
+        </a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const googleBtns = document.querySelectorAll('.google-auth-btn');
+        googleBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                this.classList.add('btn-loading');
+                setTimeout(() => {
+                    this.classList.remove('btn-loading');
+                }, 10000);
+            });
+        });
+
+        // Initial check for pre-filled inputs
+        setTimeout(() => {
+            checkVal('fg-name', 'reg-name');
+            checkVal('fg-email', 'reg-email');
+            checkVal('fg-password', 'reg-password');
+        }, 100);
+    });
+
+    window.addEventListener('pageshow', function(event) {
+        document.querySelectorAll('.btn-loading').forEach(btn => {
+            btn.classList.remove('btn-loading');
+        });
+    });
+
+    function checkVal(fgId, inId) {
+        const el = document.getElementById(inId);
+        const fg = document.getElementById(fgId);
+        if(el && fg) {
+            if(el.value.length > 0) fg.classList.add('has-val');
+            else fg.classList.remove('has-val');
+        }
+    }
+</script>
+{% endblock %}

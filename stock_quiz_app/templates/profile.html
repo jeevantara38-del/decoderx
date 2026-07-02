@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Profile — DECODER{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; padding: 20px;">
+    <h2 class="dash-title">My Profile</h2>
+    <p class="dash-sub">Manage your account and view history</p>
+
+    <!-- User Info Card -->
+    <div class="glass comp-card" style="padding: 20px; margin-top: 20px; display: flex; align-items: center; gap: 20px;">
+        {% if user.profile_image %}
+        <div class="avatar" style="width: 60px; height: 60px; font-size: 1.5rem; background-image: url('{{ user.profile_image }}'); background-size: cover; color: transparent;">
+        {% else %}
+        <div class="avatar" style="width: 60px; height: 60px; font-size: 1.5rem;">
+        {% endif %}
+            {% if user.role == 'admin' %}A{% else %}{{ user.fullname[0]|upper }}{% endif %}
+        </div>
+        <div>
+            <h3 style="color: var(--text); font-family: 'Outfit'; margin-bottom: 4px; font-size: 1.2rem;">{{ user.fullname }}</h3>
+            <p style="color: var(--text-sub); font-size: 0.9rem;">{{ user.email }}</p>
+            <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">Phone: {{ user.phone_number or 'Not provided' }}</p>
+        </div>
+    </div>
+    
+    <!-- Admin & Logout Actions -->
+    <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+        {% if user.role == 'admin' or session.get('admin') %}
+            <a href="{{ url_for('admin_dashboard') }}" class="btn-cyber secondary" style="flex: 1; text-align: center; text-decoration: none; padding: 12px; font-size: 1rem; border-radius: 12px;">Admin Console</a>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" class="btn-cyber danger" style="flex: 1; text-align: center; text-decoration: none; padding: 12px; font-size: 1rem; border-radius: 12px;">Logout</a>
+    </div>
+
+    <!-- User Attempt History -->
+    <div class="glass comp-card" style="padding: 20px; margin-top: 30px;">
+        <h3 class="section-title">My Attempts</h3>
+        <div class="table-responsive" style="max-height: 300px; overflow-y: auto; margin-top: 15px;">
+            <table class="admin-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Score</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if attempts %}
+                        {% for att in attempts %}
+                            <tr>
+                                <td style="font-size: 0.8rem; color: var(--text-sub);">
+                                    {{ att.submitted_at[:16] }}
+                                </td>
+                                <td style="font-weight: 600; color: var(--teal);">
+                                    {{ att.score }} pts
+                                </td>
+                                <td style="font-size: 0.85rem; color: var(--text-sub);">{{ att.time_taken }}s</td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 15px; font-size: 0.85rem;">
+                                No attempts registered. Join a live quiz to start!
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

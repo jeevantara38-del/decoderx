@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Complete Profile - DECODER{% endblock %}
+
+{% block content %}
+<div class="auth-wrap">
+    <div class="auth-logo">
+        <div class="auth-logo-icon" style="filter: drop-shadow(0 4px 12px var(--teal-dim));">
+            <img src="{{ url_for('static', filename='decoder_logo.png') }}" alt="DECODER Logo" style="width: 48px; height: 48px; object-fit: contain; border-radius: 12px;" loading="lazy">
+        </div>
+        <div class="auth-brand">DE<span>C</span>ODER</div>
+        <div class="auth-tagline">Complete your profile to view results</div>
+    </div>
+
+    <div class="glass auth-card">
+        <div class="auth-title">Verify Mobile Number</div>
+        <div class="auth-sub">Please provide your mobile number to claim your rank.</div>
+        
+        <form id="profile-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="form-group" id="fg-phone">
+                <input type="tel" id="prof-phone" name="phone" required autocomplete="tel" oninput="checkVal('fg-phone','prof-phone')" onfocus="checkVal('fg-phone','prof-phone')" onblur="checkVal('fg-phone','prof-phone')">
+                <label>Mobile Number (10 digits)</label>
+            </div>
+            
+            <div id="prof-error" class="otp-error" style="display: none;"></div>
+            
+            <div style="margin-bottom:24px;"></div>            
+            <button type="submit" id="prof-submit-btn" class="btn-primary">
+                <span id="prof-submit-text">Complete Profile</span>
+                <div class="otp-spinner" id="prof-spinner" style="display: none;"></div>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const form = document.getElementById("profile-form");
+        const phoneInput = document.getElementById("prof-phone");
+        const errorEl = document.getElementById("prof-error");
+        const btn = document.getElementById("prof-submit-btn");
+        const spinner = document.getElementById("prof-spinner");
+        const btnText = document.getElementById("prof-submit-text");
+
+        form.addEventListener("submit", async function(e) {
+            e.preventDefault();
+            errorEl.style.display = "none";
+            
+            let phone = phoneInput.value.replace(/\D/g, '');
+            if (phone.length !== 10) {
+                errorEl.textContent = "Please enter a valid 10-digit mobile number.";
+                errorEl.style.display = "block";
+                return;
+            }
+            
+            phone = "+91" + phone;
+            
+            btn.disabled = true;
+            spinner.style.display = "inline-block";
+            btnText.textContent = "Saving...";
+            
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const res = await fetch("/api/user/complete_profile", {
+                    method: "POST",
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const score = urlParams.get('score');
+                    const total = urlParams.get('total');
+                    const time = urlParams.get('time');
+                    
+                    let redir = "/dashboard?submitted=true";
+                    if(score !== null) redir += `&score=${score}`;
+                    if(total !== null) redir += `&total=${total}`;
+                    if(time !== null) redir += `&time=${time}`;
+                    
+                    window.location.href = redir;
+                } else {
+                    errorEl.textContent = data.message || "Failed to update profile.";
+                    errorEl.style.display = "block";
+                    btn.disabled = false;
+                    spinner.style.display = "none";
+                    btnText.textContent = "Complete Profile";
+                }
+            } catch (err) {
+                console.error(err);
+                errorEl.textContent = "An error occurred. Please try again.";
+                errorEl.style.display = "block";
+                btn.disabled = false;
+                spinner.style.display = "none";
+                btnText.textContent = "Complete Profile";
+            }
+        });
+    });
+
+    function checkVal(fgId, inId) {
+        const el = document.getElementById(inId);
+        const fg = document.getElementById(fgId);
+        if(el && fg) {
+            if(el.value.length > 0) fg.classList.add('has-val');
+            else fg.classList.remove('has-val');
+        }
+    }
+</script>
+{% endblock %}

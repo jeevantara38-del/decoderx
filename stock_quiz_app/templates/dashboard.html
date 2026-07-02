@@ -1,0 +1,510 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DECODER{% endblock %}
+
+{% block content %}
+<div class="dash-content" style="padding-bottom: 40px;">
+    
+    <!-- Greeting Header -->
+    <div class="greeting">
+        <div class="greeting-name">Hello, <span>{% if session.get('role') == 'admin' %}Administrator{% else %}{{ user.fullname }}{% endif %}</span></div>
+        <div class="greeting-sub">Welcome to the DECODER trading desk</div>
+    </div>
+    
+    <!-- Dashboard Responsive Columns Grid -->
+    <div class="dash-grid-wrapper">
+        
+        <!-- Left Column: Competition and Payment setup -->
+        <div class="dash-col">
+            <!-- Live Competition Card -->
+            <div class="glass comp-card {% if settings and settings.is_active == 1 %}glowing{% endif %} s1" style="margin-bottom: 0;">
+                <div class="comp-top">
+                    <div class="comp-label">Live Competition</div>
+                    {% if settings and settings.is_active == 1 %}
+                        <div class="live-badge live">
+                            <div class="live-dot"></div>
+                            Live
+                        </div>
+                    {% else %}
+                        <div class="live-badge waiting">
+                            <div class="live-dot"></div>
+                            Closed
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="prize-amount">
+                    <span>&#8377;</span>{{ "%.2f"|format(settings.prize_pool if settings else 1000.0) }}
+                </div>
+                <div class="comp-desc">
+                    Put your trading knowledge to the test. Join the competition, answer stock market analysis questions quickly, and claim your share of the prize pool.
+                </div>
+                {% if settings and settings.is_active == 1 %}
+                    {% if has_attempted_active and settings.allow_multiple_attempts != 1 %}
+                        <button class="btn-waiting" style="width: 100%; cursor: not-allowed;" disabled>
+                            Quiz Attempted
+                        </button>
+                    {% else %}
+                        <a href="{{ url_for('quiz') }}" class="btn-join" style="width: 100%;">
+                            {% if has_attempted_active %}Retake Quiz{% else %}Join Quiz Desk{% endif %}
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <button class="btn-waiting" style="width: 100%; cursor: not-allowed;" disabled>
+                        Waiting for Next Competition...
+                    </button>
+                {% endif %}
+            </div>
+
+
+            <!-- Stats Cards and Quick strip -->
+            <div class="dash-col" style="gap: 12px; margin-top: 12px;">
+                <div class="stat-cards" style="margin-bottom: 0;">
+                    <div class="glass stat-card s2">
+                        <div class="stat-card-label">Total Cash Won</div>
+                        <div class="stat-card-value big">&#8377; {{ "%.2f"|format(total_earnings) }}</div>
+                    </div>
+                </div>
+
+                <div class="quick-strip" style="margin-bottom: 0;">
+                    <div class="glass quick-cell s3">
+                        <div class="quick-val" style="color: var(--teal);">{{ attempts|length }}</div>
+                        <div class="quick-lbl">Total Attempts</div>
+                    </div>
+                    <div class="glass quick-cell s4">
+                        <div class="quick-val" style="color: var(--teal);">
+                            {% if attempts %}
+                                {{ attempts[0].score }} <span style="font-size: 12px; font-weight: normal; color: var(--text-sub);">pts</span>
+                            {% else %}
+                                0
+                            {% endif %}
+                        </div>
+                        <div class="quick-lbl">Last Score</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+    </div>
+
+</div>
+
+</div>
+
+
+
+<!-- Results Modal (Triggered via query params after submission) -->
+{% if request.args.get('submitted') == 'true' %}
+<div class="overlay" id="results-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(7, 16, 31, 0.85); z-index: 1000; padding: 20px;">
+    <div class="glass" style="max-width: 400px; width: 100%; text-align: center; border-color: var(--border-teal); box-shadow: 0 0 25px var(--teal-dim); padding: 30px;">
+        <h2 style="color: var(--teal); font-size: 2.2rem; font-family: 'Outfit'; margin-bottom: 8px;">Quiz Completed!</h2>
+        <p style="color: var(--text-sub); font-size: 0.95rem; margin-bottom: 20px;">Your responses have been processed.</p>
+        
+        <div style="margin: 20px 0; background: var(--input-bg); border: 1px solid var(--border); padding: 20px; border-radius: 16px;">
+            <div style="display: flex; justify-content: space-around;">
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Final Score</span>
+                    <div style="font-size: 2.2rem; font-weight: 800; color: var(--teal); margin-top: 5px;">
+                        {{ request.args.get('score') }} / {{ request.args.get('total') }}
+                    </div>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Duration</span>
+                    <div style="font-size: 2.2rem; font-weight: 800; color: var(--teal); margin-top: 5px;">
+                        {{ request.args.get('time') }}s
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button onclick="document.getElementById('results-modal').remove(); window.location.href='/dashboard';" class="btn-primary" style="flex: 1;">
+                Dashboard
+            </button>
+            {% if settings and settings.allow_multiple_attempts == 1 %}
+            <button onclick="window.location.href='/quiz';" class="btn-cyber secondary" style="flex: 1;">
+                Refresh Quiz
+            </button>
+            {% else %}
+            <button class="btn-cyber secondary" style="flex: 1; opacity: 0.5; cursor: not-allowed;" disabled title="Only one attempt is permitted.">
+                Refresh Quiz
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Offline Results Modal (Triggered via query params after offline completion) -->
+{% if request.args.get('offline_complete') == 'true' %}
+<div class="overlay" id="offline-results-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(7, 16, 31, 0.85); z-index: 1000; padding: 20px;">
+    <div class="glass" style="max-width: 400px; width: 100%; text-align: center; border-color: var(--border-teal); box-shadow: 0 0 25px var(--teal-dim); padding: 30px;">
+        <h2 style="color: #ff9e00; font-size: 2.2rem; font-family: 'Outfit'; margin-bottom: 8px;">Completed Offline!</h2>
+        <p style="color: var(--text-sub); font-size: 0.95rem; margin-bottom: 20px;">
+            Your attempt was saved locally. We will automatically synchronize it to the server as soon as connectivity is restored.
+        </p>
+        
+        <div style="margin: 20px 0; background: var(--input-bg); border: 1px solid var(--border); padding: 20px; border-radius: 16px;">
+            <div style="display: flex; justify-content: space-around;">
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Estimated Score</span>
+                    <div style="font-size: 2.2rem; font-weight: 800; color: var(--teal); margin-top: 5px;">
+                        {{ request.args.get('score') }} / {{ request.args.get('total') }}
+                    </div>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Duration</span>
+                    <div style="font-size: 2.2rem; font-weight: 800; color: var(--teal); margin-top: 5px;">
+                        {{ request.args.get('time') }}s
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button onclick="document.getElementById('offline-results-modal').remove(); window.location.href='/dashboard';" class="btn-primary" style="flex: 1;">
+                Dashboard
+            </button>
+            {% if settings and settings.allow_multiple_attempts == 1 %}
+            <button onclick="window.location.href='/quiz';" class="btn-cyber secondary" style="flex: 1;">
+                Refresh Quiz
+            </button>
+            {% else %}
+            <button class="btn-cyber secondary" style="flex: 1; opacity: 0.5; cursor: not-allowed;" disabled title="Only one attempt is permitted.">
+                Refresh Quiz
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+
+<!-- Claim Reward Modal (shown only when user wins and hasn't provided payment details) -->
+{% if needs_claim and pending_reward %}
+<div class="overlay" id="claim-reward-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(7, 16, 31, 0.92); z-index: 1000; padding: 20px;">
+    <div class="glass" style="max-width: 440px; width: 100%; text-align: center; border-color: var(--border-teal); box-shadow: 0 0 35px var(--teal-dim), 0 0 80px rgba(0, 255, 170, 0.08); padding: 35px; position: relative; overflow: hidden;">
+        
+        <!-- Decorative glow -->
+        <div style="position: absolute; top: -40px; left: 50%; transform: translateX(-50%); width: 200px; height: 200px; background: radial-gradient(circle, rgba(0,255,170,0.15) 0%, transparent 70%); pointer-events: none;"></div>
+        
+        <!-- Trophy Icon -->
+        <div style="font-size: 3.5rem; margin-bottom: 10px; filter: drop-shadow(0 0 20px rgba(255,215,0,0.4));">
+            🏆
+        </div>
+        
+        <h2 style="color: var(--teal); font-size: 1.9rem; font-family: 'Outfit'; margin-bottom: 6px; position: relative;">
+            Congratulations!
+        </h2>
+        <p style="color: var(--text-sub); font-size: 0.95rem; margin-bottom: 8px;">
+            You've won a competition reward!
+        </p>
+        
+        <!-- Prize Amount Display -->
+        <div style="margin: 18px 0; background: linear-gradient(135deg, rgba(0,255,170,0.08), rgba(0,150,255,0.06)); border: 1px solid var(--border-teal); padding: 20px; border-radius: 16px;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Your Prize Amount</span>
+            <div style="font-size: 2.8rem; font-weight: 800; color: var(--teal); margin-top: 4px; text-shadow: 0 0 20px rgba(0,255,170,0.3);">
+                &#8377;{{ "%.2f"|format(pending_reward.amount) }}
+            </div>
+        </div>
+        
+        <p style="color: var(--text-sub); font-size: 0.88rem; margin-bottom: 22px; line-height: 1.6;">
+            Enter your mobile number to claim your reward. We'll send the payment directly to your UPI-linked account.
+        </p>
+        
+        <form id="claim-reward-form" style="text-align: left;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="form-group" id="claim-fg-mobile" style="margin-bottom: 16px;">
+                <input type="tel" id="claim_payment_number" name="payment_number" pattern="[0-9]{10}" maxlength="10" autocomplete="off" required oninput="checkVal('claim-fg-mobile','claim_payment_number')" onfocus="checkVal('claim-fg-mobile','claim_payment_number')" onblur="checkVal('claim-fg-mobile','claim_payment_number')">
+                <label>Mobile Number (10 digits) *</label>
+            </div>
+            <div class="form-group" id="claim-fg-upi" style="margin-bottom: 22px;">
+                <input type="text" id="claim_upi_id" name="upi_id" autocomplete="off" oninput="checkVal('claim-fg-upi','claim_upi_id')" onfocus="checkVal('claim-fg-upi','claim_upi_id')" onblur="checkVal('claim-fg-upi','claim_upi_id')">
+                <label>UPI ID (optional, e.g. name@upi)</label>
+            </div>
+            
+            <!-- Validation message -->
+            <div id="claim-error" style="display: none; color: #ff4d6d; font-size: 0.85rem; margin-bottom: 12px; padding: 10px; background: rgba(255,77,109,0.08); border-radius: 8px; border: 1px solid rgba(255,77,109,0.15);">
+            </div>
+            
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1rem; font-weight: 700; letter-spacing: 0.5px;">
+                🎉 Claim Reward
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById("claim-reward-form").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const errorEl = document.getElementById("claim-error");
+        errorEl.style.display = "none";
+        
+        let payment_number = document.getElementById("claim_payment_number").value.trim();
+        const upi_id = document.getElementById("claim_upi_id").value.trim();
+        
+        // Sanitize payment number (remove spaces, hyphens, and country code)
+        payment_number = payment_number.replace(/[\s-]/g, '');
+        if (payment_number.startsWith('+91')) payment_number = payment_number.substring(3);
+        else if (payment_number.startsWith('91') && payment_number.length > 10) payment_number = payment_number.substring(2);
+        
+        
+        // Client-side validation
+        if (!payment_number) {
+            errorEl.textContent = "Mobile number is required to claim your reward.";
+            errorEl.style.display = "block";
+            return;
+        }
+        if (!/^[0-9]{10}$/.test(payment_number)) {
+            errorEl.textContent = "Please enter a valid 10-digit mobile number.";
+            errorEl.style.display = "block";
+            return;
+        }
+
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+
+        try {
+            const formData = new FormData();
+            formData.append("payment_number", payment_number);
+            formData.append("upi_id", upi_id);
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch("/api/user/upi", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken
+                },
+                body: formData
+            });
+            const data = await response.json();
+            
+            if(data.success) {
+                document.getElementById('claim-reward-modal').style.display = 'none';
+                // Show success toast
+                const banner = document.createElement("div");
+                banner.className = "sync-banner";
+                banner.innerHTML = `✅ ${data.message}`;
+                document.body.appendChild(banner);
+                setTimeout(() => {
+                    banner.style.animation = "slideUp 0.3s ease-in reverse forwards";
+                    setTimeout(() => {
+                        banner.remove();
+                        window.location.reload();
+                    }, 300);
+                }, 2500);
+            } else {
+                errorEl.textContent = data.message || "Failed to save details. Please try again.";
+                errorEl.style.display = "block";
+                submitBtn.disabled = false;
+                submitBtn.textContent = "🎉 Claim Reward";
+            }
+        } catch(error) {
+            console.error("Error claiming reward:", error);
+            errorEl.textContent = "Connection error. Please check your internet and try again.";
+            errorEl.style.display = "block";
+            submitBtn.disabled = false;
+            submitBtn.textContent = "🎉 Claim Reward";
+        }
+    });
+</script>
+{% endif %}
+
+<!-- AJAX handler for Offline auto-sync -->
+<script>
+
+    // Offline submission auto-sync helper
+    async function syncOfflineData() {
+        if (!navigator.onLine) return; // Only sync if online
+        
+        const queuedSubmission = localStorage.getItem("offline_submission");
+        if (!queuedSubmission) return;
+
+        console.log("Found unsynced offline attempt. Initiating sync...");
+        const payload = JSON.parse(queuedSubmission);
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch("/api/quiz/submit", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": csrfToken
+                },
+                body: JSON.stringify({
+                    answers: payload.answers,
+                    time_taken: payload.time_taken
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                console.log("Auto-sync completed. Local submission cleared.");
+                localStorage.removeItem("offline_submission");
+                localStorage.removeItem("offline_quiz_settings");
+                localStorage.removeItem("offline_quiz_cache");
+                
+                // Show a beautiful toast / notification
+                const banner = document.createElement("div");
+                banner.className = "sync-banner";
+                banner.innerHTML = `Offline results synced successfully!`;
+                document.body.appendChild(banner);
+                setTimeout(() => {
+                    banner.style.animation = "slideUp 0.3s ease-in reverse forwards";
+                    setTimeout(() => {
+                        banner.remove();
+                        // Reload to show the official synced entry in history
+                        window.location.reload();
+                    }, 300);
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("Auto-sync failed:", err);
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        syncOfflineData();
+        window.addEventListener("online", syncOfflineData);
+    });
+
+    // Real-time UI updates from Pusher
+    window.addEventListener('decoder:quiz_status_changed', function(e) {
+        const isActive = e.detail.is_active;
+        const compCard = document.querySelector('.comp-card');
+        const badgeContainer = document.querySelector('.comp-top');
+        const btnContainer = document.querySelector('.comp-card');
+        
+        if (isActive === 1 || isActive === true) {
+            if (compCard) compCard.classList.add('glowing');
+            
+            // Update badge
+            const badge = document.querySelector('.live-badge');
+            if (badge) {
+                badge.className = 'live-badge live';
+                badge.innerHTML = '<div class="live-dot"></div>Live';
+            }
+            
+            // Re-render button if waiting
+            const waitingBtn = document.querySelector('.btn-waiting');
+            if (waitingBtn && waitingBtn.textContent.includes('Waiting for Next Competition')) {
+                const newBtn = document.createElement('a');
+                newBtn.href = '/quiz';
+                newBtn.className = 'btn-join';
+                newBtn.style.width = '100%';
+                newBtn.textContent = 'Join Quiz Desk';
+                waitingBtn.replaceWith(newBtn);
+            }
+        } else {
+            if (compCard) compCard.classList.remove('glowing');
+            
+            // Update badge
+            const badge = document.querySelector('.live-badge');
+            if (badge) {
+                badge.className = 'live-badge waiting';
+                badge.innerHTML = '<div class="live-dot"></div>Closed';
+            }
+            
+            // Re-render button
+            const joinBtn = document.querySelector('.btn-join');
+            if (joinBtn) {
+                const newBtn = document.createElement('button');
+                newBtn.className = 'btn-waiting';
+                newBtn.style.width = '100%';
+                newBtn.style.cursor = 'not-allowed';
+                newBtn.disabled = true;
+                newBtn.textContent = 'Waiting for Next Competition...';
+                joinBtn.replaceWith(newBtn);
+            }
+        }
+    });
+
+
+    window.addEventListener('decoder:quiz_settings_changed', function(e) {
+        if (e.detail && e.detail.prize_pool !== undefined) {
+            const prizeDiv = document.querySelector('.prize-amount');
+            if (prizeDiv) {
+                prizeDiv.innerHTML = '<span>&#8377;</span>' + parseFloat(e.detail.prize_pool).toFixed(2);
+            }
+        }
+    });
+
+    window.addEventListener('decoder:leaderboard_updated', function(e) {
+        fetch('/api/leaderboard/data_dashboard')
+            .then(res => res.text())
+            .then(html => {
+                const tbody = document.getElementById('dashboard-lb-body');
+                if (tbody) tbody.innerHTML = html;
+            });
+    });
+
+    window.addEventListener('decoder:participant_joined', function(e) {
+        console.log("Participant joined:", e.detail.user);
+    });
+</script>
+
+{% if not user.fullname or user.fullname.strip() == '' or user.fullname == 'Google User' %}
+<!-- Name Capture Modal -->
+<div class="overlay" id="name-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(7, 16, 31, 0.95); z-index: 9999; padding: 20px;">
+    <div class="glass" style="max-width: 400px; width: 100%; text-align: center; border-color: var(--border-teal); box-shadow: 0 0 35px rgba(0,255,170,0.2); padding: 40px 30px; position: relative;">
+        <h2 style="font-family: 'Outfit'; font-size: 1.8rem; margin-bottom: 10px; color: var(--text-primary);">Welcome!</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 25px; font-size: 0.95rem;">Please enter your name to continue. This name will appear on the leaderboard.</p>
+        
+        <form id="name-capture-form" onsubmit="submitName(event)">
+            <div class="form-group-clean" style="text-align: left; margin-bottom: 20px;">
+                <label for="capture_fullname" style="display: block; margin-bottom: 8px; color: var(--teal); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">Your Name</label>
+                <input type="text" id="capture_fullname" name="fullname" required placeholder="Enter your full name" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-teal); background: rgba(0, 255, 170, 0.05); color: white; font-family: 'Inter'; font-size: 1rem; outline: none;">
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 14px; font-size: 1rem; letter-spacing: 0.5px;">Save & Continue</button>
+            <div id="name-error" style="color: #ff4d6d; margin-top: 15px; font-size: 0.85rem; display: none;"></div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function submitName(e) {
+        e.preventDefault();
+        const fullname = document.getElementById('capture_fullname').value.trim();
+        const errorDiv = document.getElementById('name-error');
+        const btn = e.target.querySelector('button');
+        
+        if (!fullname) {
+            errorDiv.textContent = "Name is required.";
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        btn.disabled = true;
+        btn.textContent = "Saving...";
+        
+        fetch('/api/user/update_name', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ fullname: fullname })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                errorDiv.textContent = data.message || "Failed to update name.";
+                errorDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = "Save & Continue";
+            }
+        })
+        .catch(err => {
+            errorDiv.textContent = "Network error. Please try again.";
+            errorDiv.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = "Save & Continue";
+        });
+    }
+</script>
+{% endif %}
+
+{% endblock %}

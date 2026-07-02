@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Rewards — DECODER{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; padding: 20px;">
+    <h2 class="dash-title">Rewards Ledger</h2>
+    <p class="dash-sub">Track your earnings and payouts</p>
+    
+    <div class="stat-cards" style="margin-bottom: 20px; margin-top: 20px;">
+        <div class="glass stat-card s2">
+            <div class="stat-card-label">Total Cash Won</div>
+            <div class="stat-card-value big">&#8377; {{ "%.2f"|format(total_earnings) }}</div>
+        </div>
+    </div>
+
+    <div class="glass comp-card" style="padding: 20px;">
+        <div class="table-responsive">
+            <table class="admin-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>UTR Reference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if transactions %}
+                        {% for tx in transactions %}
+                            <tr>
+                                <td style="font-weight: 700; color: var(--teal);">
+                                    &#8377;{{ "%.2f"|format(tx.amount) }}
+                                </td>
+                                <td>
+                                    <span class="status-badge {{ tx.status|lower }}">
+                                        {{ tx.status }}
+                                    </span>
+                                </td>
+                                <td style="font-family: monospace; font-size: 0.8rem; color: var(--text-sub);">
+                                    {{ tx.utr_id or 'Processing...' }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 15px; font-size: 0.85rem;">
+                                No rewards issued yet. Keep competing!
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

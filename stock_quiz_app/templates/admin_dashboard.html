@@ -1,0 +1,1374 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Panel - DECODER{% endblock %}
+
+{% block content %}
+<div class="container" style="padding: 40px 20px;">
+    
+    <!-- Admin Header Info -->
+    <div class="admin-header">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div>
+                <span style="font-size: 0.8rem; text-transform: uppercase; color: var(--accent-blue); letter-spacing: 0.05em; font-weight: bold;">System Panel</span>
+                <h1 style="font-size: 2.2rem; font-family: 'Outfit'; margin: 0;">DECODER Administration</h1>
+            </div>
+            {% if settings and settings.is_active == 1 %}
+                <span style="background: rgba(0, 255, 170, 0.1); color: var(--teal); padding: 4px 10px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; border: 1px solid var(--border-teal); display: inline-flex; align-items: center; gap: 6px;">
+                    <div style="width: 8px; height: 8px; background: var(--teal); border-radius: 50%; box-shadow: 0 0 8px var(--teal);"></div>
+                    LIVE
+                </span>
+            {% else %}
+                <span style="background: rgba(255, 77, 109, 0.1); color: #ff4d6d; padding: 4px 10px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; border: 1px solid rgba(255, 77, 109, 0.3); display: inline-flex; align-items: center; gap: 6px;">
+                    <div style="width: 8px; height: 8px; background: #ff4d6d; border-radius: 50%;"></div>
+                    CLOSED
+                </span>
+            {% endif %}
+        </div>
+        
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <form action="{{ url_for('admin_toggle_quiz') }}" method="POST" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                {% if settings and settings.is_active == 1 %}
+                    <div style="margin-right: 15px; text-align: right;">
+                        <div style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">Auto-closes in</div>
+                        <div id="global-countdown-timer" data-endtime="{{ settings.end_time }}" style="font-family: 'Rajdhani'; font-size: 1.2rem; font-weight: bold; color: var(--accent-green); white-space: nowrap;">--:--:--</div>
+                    </div>
+                    <button type="submit" class="btn-cyber danger" style="padding: 10px 20px; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        </svg>
+                        Stop Current Quiz
+                    </button>
+                {% else %}
+                    <select name="duration_days" style="background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--border-teal); border-radius: 6px; padding: 8px; font-family: 'Inter';">
+                        <option value="1">1 Day</option>
+                        <option value="2">2 Days</option>
+                        <option value="3">3 Days</option>
+                        <option value="4">4 Days</option>
+                    </select>
+                    <button type="submit" class="btn-primary" style="padding: 10px 20px; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Start Quiz Live
+                    </button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Navigation Tabs -->
+    <div class="admin-tabs">
+        <button class="admin-tab-btn active" onclick="switchTab(event, 'settings-tab')">Quiz Controls</button>
+        <button class="admin-tab-btn" onclick="switchTab(event, 'questions-tab')">Questions Panel ({{ questions|length }})</button>
+        <button class="admin-tab-btn" onclick="switchTab(event, 'participants-tab')">Registered Users ({{ participants|length }})</button>
+        <button class="admin-tab-btn" onclick="switchTab(event, 'contacts-tab')">Participant Contacts</button>
+        <button class="admin-tab-btn" onclick="switchTab(event, 'scores-tab')">Scores & Winner Logs</button>
+        <button class="admin-tab-btn" onclick="switchTab(event, 'transactions-tab')">Transaction Ledger</button>
+    </div>
+
+    <!-- TAB 1: QUIZ CONTROLS & SETTINGS -->
+    <div id="settings-tab" class="admin-tab-content active">
+        <div class="admin-settings-grid">
+            
+            <!-- Global Config Card -->
+            <div class="glass-card">
+                <h3 class="mb-2">Global Quiz Configuration</h3>
+                <form action="{{ url_for('admin_update_settings') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="form-group-clean">
+                        <label for="time_limit">Global Timer Limit (Seconds)</label>
+                        <input type="number" id="time_limit" name="time_limit" value="{{ settings.time_limit if settings else 300 }}" required>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); margin-top: -4px;">Currently: {{ (settings.time_limit if settings else 300) // 60 }} mins</span>
+                    </div>
+                    
+                    <div class="form-group-clean">
+                        <label for="prize_pool">Display Prize Pool (&#8377;)</label>
+                        <input type="number" step="0.01" id="prize_pool" name="prize_pool" value="{{ settings.prize_pool if settings else 1000.00 }}" required>
+                    </div>
+                    
+                    <div class="form-group-clean">
+                        <label for="quiz_password">Quiz Entry Password (Optional)</label>
+                        <input type="text" id="quiz_password" name="quiz_password" value="{{ settings.quiz_password if settings and settings.quiz_password else '' }}" placeholder="Leave blank for no password">
+                    </div>
+                    
+                    <div class="form-group-clean">
+                        <label for="allow_multiple_attempts">Allow Multiple Attempts</label>
+                        <select id="allow_multiple_attempts" name="allow_multiple_attempts" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: var(--text-primary); font-family: 'Inter';">
+                            <option value="0" {% if not settings or settings.allow_multiple_attempts == 0 %}selected{% endif %}>No (Single Attempt Only)</option>
+                            <option value="1" {% if settings and settings.allow_multiple_attempts == 1 %}selected{% endif %}>Yes (Allow Refresh/Retake)</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-cyber" style="width: 100%; margin-top: 10px;">
+                        Update Global Settings
+                    </button>
+                </form>
+            </div>
+
+            <!-- Promotion / Admin Control Card -->
+            <div class="glass-card">
+                <h3 class="mb-2">Security & Administrative Actions</h3>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px;">
+                    Promote a registered user to administrator using their mobile phone number.
+                </p>
+                <form action="{{ url_for('create_admin_account') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="form-group-clean">
+                        <label for="admin_phone">Registered Phone Number</label>
+                        <input type="tel" id="admin_phone" name="phone" placeholder="Enter 10-digit number" pattern="[0-9]{10}" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-cyber secondary" style="width: 100%; margin-top: 10px; border-color: var(--accent-purple); color: var(--accent-purple);">
+                        Grant Admin Privileges
+                    </button>
+                </form>
+                
+                <hr style="border-color: var(--glass-border); margin: 20px 0;">
+                <h4 style="color: #ff4d6d; margin-bottom: 8px;">Danger Zone</h4>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 12px;">
+                    Reset all quiz attempts and progress data. Use this before starting a brand new quiz round.
+                </p>
+                <form action="{{ url_for('admin_reset_all_quiz_data') }}" method="POST" onsubmit="return confirm('⚠️ This will DELETE all quiz progress and attempts. This action cannot be undone. Continue?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn-cyber danger" style="width: 100%;">
+                        Reset All Quiz Data
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TAB 2: QUESTIONS PANEL -->
+    <div id="questions-tab" class="admin-tab-content">
+        <div class="admin-questions-grid">
+            
+            <!-- Left: Questions List -->
+            <div class="glass-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">Active Questions Library</h3>
+                    {% if questions %}
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" form="bulk-delete-form" class="btn-cyber danger" style="padding: 6px 12px; font-size: 0.85rem;" onclick="return confirm('Are you sure you want to delete the selected questions?');">Delete Selected</button>
+                        <form action="{{ url_for('admin_delete_all_questions') }}" method="POST" onsubmit="return confirm('WARNING: Are you sure you want to delete ALL questions? This cannot be undone.');" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="btn-cyber danger" style="padding: 6px 12px; font-size: 0.85rem; border-color: #ff4d4d; color: #ff4d4d;">Delete All</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if questions %}
+                    <form id="bulk-delete-form" action="{{ url_for('admin_delete_bulk_questions') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <div style="margin-bottom: 15px; padding-left: 5px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-secondary); font-size: 0.9rem; width: fit-content;">
+                                <input type="checkbox" id="select-all-questions" onclick="toggleAllQuestions(this)" style="width: 16px; height: 16px; accent-color: var(--accent-green);">
+                                Select All
+                            </label>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            {% for q in questions %}
+                                <div class="glass-card" style="padding: 20px; position: relative; margin-bottom: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; margin-bottom: 15px;">
+                                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                                            <input type="checkbox" name="question_ids" value="{{ q.id }}" class="question-checkbox" style="width: 18px; height: 18px; margin-top: 4px; accent-color: var(--accent-green);">
+                                            <strong style="font-size: 1.1rem; color: var(--text); line-height: 1.4;"><span style="color: var(--accent-blue);">Q{{ q.id }}.</span> {{ q.question }}</strong>
+                                        </div>
+                                        
+                                        <div style="display: flex; gap: 8px;">
+                                            <button type="button" class="btn-cyber secondary" style="padding: 8px 14px; font-size: 0.8rem;" 
+                                                    data-id="{{ q.id }}"
+                                                    data-question="{{ q.question|escape }}"
+                                                    data-option1="{{ q.option1|escape }}"
+                                                    data-option2="{{ q.option2|escape }}"
+                                                    data-option3="{{ q.option3|escape }}"
+                                                    data-option4="{{ q.option4|escape }}"
+                                                    data-correct="{{ q.correct_answer }}"
+                                                    onclick="openEditModalFromButton(this)">
+                                                Edit
+                                            </button>
+                                            <button type="button" class="btn-cyber danger" style="padding: 8px 14px; font-size: 0.8rem;" onclick="document.getElementById('delete-form-{{ q.id }}').submit();">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9rem; color: var(--text-secondary);">
+                                        <div class="{% if q.correct_answer == 1 %}correct-opt{% endif %}" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+                                            <strong>A.</strong> {{ q.option1 }}
+                                        </div>
+                                        <div class="{% if q.correct_answer == 2 %}correct-opt{% endif %}" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+                                            <strong>B.</strong> {{ q.option2 }}
+                                        </div>
+                                        <div class="{% if q.correct_answer == 3 %}correct-opt{% endif %}" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+                                            <strong>C.</strong> {{ q.option3 }}
+                                        </div>
+                                        <div class="{% if q.correct_answer == 4 %}correct-opt{% endif %}" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);">
+                                            <strong>D.</strong> {{ q.option4 }}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </form>
+                    
+                    <!-- Hidden Individual Delete Forms -->
+                    {% for q in questions %}
+                        <form id="delete-form-{{ q.id }}" action="{{ url_for('admin_delete_question', q_id=q.id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this question?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        </form>
+                    {% endfor %}
+                {% else %}
+                    <p style="text-align: center; color: var(--text-secondary); padding: 40px 0;">No questions configured yet. Use the pane on the right to add some.</p>
+                {% endif %}
+            </div>
+            
+            <!-- Right: Add Question Card -->
+            <div class="glass-card" style="height: fit-content;">
+                <h3 class="mb-2">Add New Question</h3>
+                <form action="{{ url_for('admin_add_question') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="form-group-clean">
+                        <label for="new_question">Question Statement</label>
+                        <input type="text" id="new_question" name="question" placeholder="Enter question description" required>
+                    </div>
+                    <div class="form-group-clean">
+                        <label for="new_opt1">Option A</label>
+                        <input type="text" id="new_opt1" name="option1" placeholder="Option A text" required>
+                    </div>
+                    <div class="form-group-clean">
+                        <label for="new_opt2">Option B</label>
+                        <input type="text" id="new_opt2" name="option2" placeholder="Option B text" required>
+                    </div>
+                    <div class="form-group-clean">
+                        <label for="new_opt3">Option C</label>
+                        <input type="text" id="new_opt3" name="option3" placeholder="Option C text" required>
+                    </div>
+                    <div class="form-group-clean">
+                        <label for="new_opt4">Option D</label>
+                        <input type="text" id="new_opt4" name="option4" placeholder="Option D text" required>
+                    </div>
+                    <div class="form-group-clean">
+                        <label for="new_correct">Correct Answer Index</label>
+                        <select id="new_correct" name="correct_answer" style="width: 100%;" required>
+                            <option value="1">Option A</option>
+                            <option value="2">Option B</option>
+                            <option value="3">Option C</option>
+                            <option value="4">Option D</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="btn-cyber" style="width: 100%; margin-top: 10px;">
+                        Save Question
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Real-time Admin Announcement Card -->
+            <div class="glass-card" style="height: fit-content;">
+                <h3 class="mb-2">Broadcast Real-time Announcement</h3>
+                <form action="{{ url_for('admin_announce') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="form-group-clean">
+                        <label for="message">Announcement Message</label>
+                        <textarea id="message" name="message" rows="3" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: var(--text-primary); font-family: 'Inter';" required placeholder="Type a message to send to all connected users instantly..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-cyber" style="width: 100%; margin-top: 10px;">Broadcast to Users</button>
+                </form>
+            </div>
+
+            <!-- Bulk JSON Import Card -->
+            <div class="glass-card mt-2" style="height: fit-content;">
+                <h3 class="mb-2">Bulk JSON Import</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 15px;">
+                    Paste a JSON array of questions to bulk insert.
+                </p>
+                <form action="{{ url_for('admin_import_questions_json') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <div class="form-group-clean">
+                        <label>Bulk Import JSON</label>
+                        <textarea name="questions_json" style="width: 100%; height: 150px; font-family: monospace; font-size: 0.85rem;" placeholder='[
+  {
+    "question": "Sample Question?",
+    "option1": "Opt A",
+    "option2": "Opt B",
+    "option3": "Opt C",
+    "option4": "Opt D",
+    "correct_answer": 1
+  }
+]' required></textarea>
+                    </div>
+                    <button type="submit" class="btn-cyber secondary" style="width: 100%;">
+                        Import Questions
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TAB 3: REGISTERED USERS -->
+    <div id="participants-tab" class="admin-tab-content">
+        <div class="glass-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h3 style="margin: 0; display: inline-flex; align-items: center; gap: 10px;">
+                        Registered Accounts Workbook
+                    </h3>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
+                        Double-click any cell to edit details inline. Press Enter or click outside to auto-save.
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="excel-ribbon-btn" onclick="insertExcelRow()" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Insert Row
+                    </button>
+                    <button class="btn-cyber success" style="padding: 8px 16px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;" onclick="exportTableToCSV('excel-users-sheet', 'registered_users.csv')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <path d="M21 15v4a2 2 0 0 1-2-2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Export CSV
+                    </button>
+                </div>
+            </div>
+            
+            <div class="excel-spreadsheet-container">
+                <table class="excel-sheet" id="excel-users-sheet">
+                    <thead>
+                        <tr>
+                            <th style="width: 45px;"></th>
+                            <th class="excel-col-header" style="width: 250px;">A (Full Name)</th>
+                            <th class="excel-col-header" style="width: 180px;">B (Phone / Email)</th>
+                            <th class="excel-col-header" style="width: 100px;">C (Score)</th>
+                            <th class="excel-col-header" style="width: 100px;">D (Rank)</th>
+                            <th class="excel-col-header" style="width: 200px;">E (UPI ID)</th>
+                            <th class="excel-col-header" style="width: 180px;">F (Payment Phone)</th>
+                            <th class="excel-col-header" style="width: 120px;">G (Role)</th>
+                            <th class="excel-col-header" style="width: 100px;">H (Actions)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="excel-users-body">
+                        {% if participants %}
+                            {% for u in participants %}
+                                <tr id="user-row-{{ u.id }}">
+                                    <th class="excel-row-num">{{ loop.index }}</th>
+                                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="{{ u.id }}" data-field="fullname">
+                                        {{ u.fullname }}
+                                    </td>
+                                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="{{ u.id }}" data-field="phone">
+                                        {{ u.phone }}
+                                    </td>
+                                    <td onclick="selectCell(this)" style="font-weight: bold; color: var(--accent-green);">
+                                        {{ u.best_score }}
+                                    </td>
+                                    <td onclick="selectCell(this)" style="font-weight: bold; color: var(--accent-gold);">
+                                        #{{ u.rank }}
+                                    </td>
+                                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="{{ u.id }}" data-field="upi_id" style="color: var(--accent-blue);">
+                                        {{ u.upi_id or '' }}
+                                    </td>
+                                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="{{ u.id }}" data-field="payment_number">
+                                        {{ u.payment_number or '' }}
+                                    </td>
+                                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="{{ u.id }}" data-field="role">
+                                        <span class="status-badge {% if u.role == 'admin' %}admin-role{% else %}user-role{% endif %}">
+                                            {{ u.role }}
+                                        </span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <div style="display: flex; gap: 4px; justify-content: center;">
+                                            <button class="excel-ribbon-btn" data-id="{{ u.id }}" data-name="{{ u.fullname|escape }}" onclick="resetUserQuiz(this)" style="padding: 4px 8px; font-size: 0.75rem;" title="Reset quiz so user can retake">
+                                                Reset
+                                            </button>
+                                            <button class="excel-ribbon-btn danger" data-id="{{ u.id }}" onclick="deleteExcelRowFromButton(this)" style="padding: 4px 8px; font-size: 0.75rem;">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr id="no-users-row">
+                                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 20px;">No users registered yet.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="excel-sheet-tabs">
+                <div class="excel-sheet-tab">📁 Sheet1 (Registered Users)</div>
+                <div class="excel-sheet-tab-spacer"></div>
+                <div class="excel-status-indicator" id="excel-status">
+                    <span style="color: var(--accent-green);">●</span> Ready
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: SCORES & WINNER LOGS -->
+    <div id="scores-tab" class="admin-tab-content">
+        <div class="glass-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h3 style="margin: 0;">Attendee Score Workbook</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;">
+                        Double-click **Score** or **Duration** cells to adjust attendee attempts inline.
+                    </p>
+                </div>
+                <button class="btn-cyber success" style="padding: 8px 16px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;" onclick="exportTableToCSV('excel-attempts-sheet', 'quiz_attendees.csv')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export CSV
+                </button>
+            </div>
+            
+            <div class="excel-spreadsheet-container">
+                <table class="excel-sheet" id="excel-attempts-sheet">
+                    <thead>
+                        <tr>
+                            <th style="width: 45px;"></th>
+                            <th class="excel-col-header" style="width: 100px;">A (Rank)</th>
+                            <th class="excel-col-header" style="width: 100px;">B (User ID)</th>
+                            <th class="excel-col-header" style="width: 200px;">C (Name)</th>
+                            <th class="excel-col-header" style="width: 150px;">D (Phone)</th>
+                            <th class="excel-col-header" style="width: 120px;">E (Score)</th>
+                            <th class="excel-col-header" style="width: 150px;">F (Duration)</th>
+                            <th class="excel-col-header" style="width: 100px;">G (Warnings)</th>
+                            <th class="excel-col-header" style="width: 200px;">H (Submitted At)</th>
+                            <th class="excel-col-header" style="width: 180px;">I (Actions)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="excel-attempts-body">
+                        {% if attempts %}
+                            {% for a in attempts %}
+                                <tr id="attempt-row-{{ a.attempt_id }}">
+                                    <th class="excel-row-num">{{ loop.index }}</th>
+                                    <td class="attempt-rank" onclick="selectCell(this)"><strong>#{{ loop.index }}</strong></td>
+                                    <td onclick="selectCell(this)">{{ a.user_id }}</td>
+                                    <td onclick="selectCell(this)" style="font-weight: 600;">
+                                        {{ a.fullname }}
+                                    </td>
+                                    <td onclick="selectCell(this)">
+                                        {{ a.phone }}
+                                    </td>
+                                    <td onclick="selectCell(this)" ondblclick="editAttemptCell(this)" data-attempt-id="{{ a.attempt_id }}" data-field="score" style="color: var(--accent-green); font-weight: 700; cursor: cell;">
+                                        {{ a.score }} pts
+                                    </td>
+                                    <td onclick="selectCell(this)" ondblclick="editAttemptCell(this)" data-attempt-id="{{ a.attempt_id }}" data-field="time_taken" style="cursor: cell;">
+                                        {{ a.time_taken }} seconds
+                                    </td>
+                                    <td onclick="selectCell(this)" {% if a.warnings_count > 0 %}style="color: var(--accent-red); font-weight: bold;"{% else %}style="color: var(--text-secondary); font-weight: bold;"{% endif %}>
+                                        {{ a.warnings_count }}
+                                    </td>
+                                    <td onclick="selectCell(this)" style="font-size: 0.8rem; color: var(--text-secondary);">{{ a.submitted_at }}</td>
+                                    <td>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button class="excel-ribbon-btn" style="padding: 4px 8px; font-size: 0.75rem;"
+                                                    data-user-id="{{ a.user_id }}"
+                                                    data-fullname="{{ a.fullname|escape }}"
+                                                    onclick="openPayoutModalFromButton(this)">
+                                                Payout
+                                            </button>
+                                             <button class="excel-ribbon-btn danger" style="padding: 4px 8px; font-size: 0.75rem;"
+                                                     data-id="{{ a.attempt_id }}"
+                                                     onclick="deleteAttemptFromButton(this)">
+                                                 Wipe
+                                             </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: var(--text-secondary); padding: 20px;">No quiz attempts recorded yet.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="excel-sheet-tabs">
+                <div class="excel-sheet-tab">📁 Sheet2 (Quiz Attendees)</div>
+                <div class="excel-sheet-tab-spacer"></div>
+                <div class="excel-status-indicator" id="excel-attempts-status">
+                    <span style="color: var(--accent-green);">●</span> Ready
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: PARTICIPANT CONTACTS -->
+    <div id="contacts-tab" class="admin-tab-content">
+        <div class="glass-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                <h3 class="mb-2" style="margin-bottom: 0;">Participant Contacts</h3>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="btn-cyber secondary" style="padding: 8px 14px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;" onclick="copyAllPhoneNumbers()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Copy All Numbers
+                    </button>
+                    <a href="{{ url_for('admin_export_contacts_csv') }}" class="btn-cyber" style="padding: 8px 14px; font-size: 0.8rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Export CSV
+                    </a>
+                </div>
+            </div>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Full Name</th>
+                            <th>Mobile Number</th>
+                            <th>Score</th>
+                            <th>Submission Time</th>
+                            <th>Quiz Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if contacts %}
+                            {% for c in contacts %}
+                                <tr>
+                                    <td>
+                                        {% if c.rank <= 3 %}
+                                            <span class="rank-badge rank-{{ c.rank }}" style="display:inline-block; padding: 2px 10px; border-radius: 6px; font-weight: bold;">{{ c.rank }}</span>
+                                        {% else %}
+                                            {{ c.rank }}
+                                        {% endif %}
+                                    </td>
+                                    <td style="font-weight: bold;">{{ c.fullname }}</td>
+                                    <td style="color: var(--teal); font-family: monospace;" id="phone-{{ loop.index }}">{{ c.phone_number }}</td>
+                                    <td style="font-weight: 600;">{{ c.score }}</td>
+                                    <td style="font-size: 0.8rem; color: var(--text-secondary);">{{ c.submitted_at }}</td>
+                                    <td>
+                                        {% if c.quiz_status == 'Completed' %}
+                                            <span class="status-badge paid" style="font-size: 0.7rem;">Completed</span>
+                                        {% elif c.quiz_status == 'In Progress' %}
+                                            <span class="status-badge pending" style="font-size: 0.7rem;">In Progress</span>
+                                        {% else %}
+                                            <span class="status-badge" style="font-size: 0.7rem;">Not Started</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if c.phone_number != 'Unverified' %}
+                                        <button class="btn-cyber secondary" style="padding: 4px 10px; font-size: 0.7rem;" onclick="copyPhone('{{ c.phone_number }}')">
+                                            Copy
+                                        </button>
+                                        {% else %}
+                                            <span style="color: var(--text-muted); font-size: 0.75rem;">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 20px;">No quiz participants yet.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: TRANSACTION LEDGER -->
+    <div id="transactions-tab" class="admin-tab-content">
+        <div class="glass-card">
+            <h3 class="mb-2">Transactions Ledger</h3>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Tx ID</th>
+                            <th>Recipient</th>
+                            <th>Reg Phone</th>
+                            <th>Payment Info</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Date Created</th>
+                            <th>UTR ID Reference</th>
+                            <th>Modify Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if transactions %}
+                            {% for t in transactions %}
+                                <tr>
+                                    <td>{{ t.transaction_id }}</td>
+                                    <td style="font-weight: bold;">
+                                        {{ t.fullname }}
+                                    </td>
+                                    <td>
+                                        +91 {{ t.phone }}
+                                    </td>
+                                    <td>
+                                        {% if t.winner_mobile %}
+                                            <div style="font-size: 0.85rem; color: var(--accent-blue); font-weight: 600;">+91 {{ t.winner_mobile }}</div>
+                                            {% if t.winner_upi %}
+                                                <div style="font-size: 0.75rem; color: var(--text-secondary);">{{ t.winner_upi }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="status-badge pending" style="font-size: 0.65rem; padding: 2px 6px;">Awaiting Details</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="color: var(--accent-green); font-weight: bold;">&#8377;{{ "%.2f"|format(t.amount) }}</td>
+                                    <td>
+                                        <span class="status-badge {{ t.status|lower }}">{{ t.status }}</span>
+                                    </td>
+                                    <td style="font-size: 0.8rem; color: var(--text-secondary);">{{ t.date }}</td>
+                                    <td style="font-family: monospace; font-size: 0.85rem;">{{ t.utr_id or '-' }}</td>
+                                    <td>
+                                         <button class="btn-cyber secondary" style="padding: 6px 12px; font-size: 0.75rem;"
+                                                 data-tx-id="{{ t.transaction_id }}"
+                                                 data-fullname="{{ t.fullname|escape }}"
+                                                 data-amount="{{ t.amount }}"
+                                                 data-status="{{ t.status }}"
+                                                 data-utr-id="{{ t.utr_id or '' }}"
+                                                 onclick="openTxModalFromButton(this)">
+                                             Update Ledger
+                                         </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 20px;">No payout records issued yet.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 1. Question Edit Modal Overlay -->
+<div class="overlay" id="edit-q-modal">
+    <div class="modal-content" style="margin: 0 auto;">
+        <h3 class="mb-2" style="color: var(--accent-blue);">Edit Question Details</h3>
+        <form id="edit-q-form" action="" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="form-group-clean">
+                <label for="edit_question">Question Statement</label>
+                <input type="text" id="edit_question" name="question" required>
+            </div>
+            <div class="form-group-clean">
+                <label for="edit_opt1">Option A</label>
+                <input type="text" id="edit_opt1" name="option1" required>
+            </div>
+            <div class="form-group-clean">
+                <label for="edit_opt2">Option B</label>
+                <input type="text" id="edit_opt2" name="option2" required>
+            </div>
+            <div class="form-group-clean">
+                <label for="edit_opt3">Option C</label>
+                <input type="text" id="edit_opt3" name="option3" required>
+            </div>
+            <div class="form-group-clean">
+                <label for="edit_opt4">Option D</label>
+                <input type="text" id="edit_opt4" name="option4" required>
+            </div>
+            <div class="form-group-clean">
+                <label for="edit_correct">Correct Answer Index</label>
+                <select id="edit_correct" name="correct_answer" style="width: 100%;" required>
+                    <option value="1">Option A</option>
+                    <option value="2">Option B</option>
+                    <option value="3">Option C</option>
+                    <option value="4">Option D</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn-cyber" style="flex: 1;">Save Changes</button>
+                <button type="button" class="btn-cyber secondary" style="flex: 1;" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. Payout Creator Modal Overlay -->
+<div class="overlay" id="payout-modal">
+    <div class="modal-content" style="margin: 0 auto;">
+        <h3 class="mb-2" style="color: var(--accent-green);">Create Payout Record</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px;">
+            Issuing cash reward to: <strong id="payout-recipient-name" style="color: #fff;"></strong>
+        </p>
+        <form action="{{ url_for('admin_create_payout') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" id="payout-user-id" name="user_id">
+            
+            <div class="form-group-clean">
+                <label for="payout_amount">Payout Amount (&#8377;)</label>
+                <input type="number" step="0.01" id="payout_amount" name="amount" placeholder="Enter amount (e.g. 500)" required>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn-cyber success" style="flex: 1;">Issue Payout</button>
+                <button type="button" class="btn-cyber secondary" style="flex: 1;" onclick="closePayoutModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 3. Transaction Ledger Modifier Modal Overlay -->
+<div class="overlay" id="tx-modal">
+    <div class="modal-content" style="margin: 0 auto;">
+        <h3 class="mb-2" style="color: var(--accent-blue);">Modify Transaction Ledger</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 20px;">
+            Updating transaction for: <strong id="tx-recipient-name" style="color: #fff;"></strong> (<span id="tx-amount-display"></span>)
+        </p>
+        
+        <form id="tx-update-form" action="" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="form-group-clean">
+                <label for="tx_status">Transaction Payout Status</label>
+                <select id="tx_status" name="status" style="width: 100%;" required>
+                    <option value="Pending">Pending</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Rejected">Rejected</option>
+                </select>
+            </div>
+            <div class="form-group-clean">
+                <label for="tx_utr">Transaction UTR Reference ID</label>
+                <input type="text" id="tx_utr" name="utr_id" placeholder="Enter bank UTR reference">
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn-cyber" style="flex: 1;">Save Updates</button>
+                <button type="button" class="btn-cyber secondary" style="flex: 1;" onclick="closeTxModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Tab switching engine
+    function switchTab(evt, tabId) {
+        // Hide all tab contents
+        const tabContents = document.getElementsByClassName("admin-tab-content");
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].classList.remove("active");
+        }
+        
+        // Remove active class from tab buttons
+        const tabBtns = document.getElementsByClassName("admin-tab-btn");
+        for (let i = 0; i < tabBtns.length; i++) {
+            tabBtns[i].classList.remove("active");
+        }
+        
+        // Show selected tab content and make button active
+        document.getElementById(tabId).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+
+    // Modal control helper functions
+    
+    // Q Edit Modal
+    function openEditModal(id, question, o1, o2, o3, o4, correct) {
+        document.getElementById("edit-q-form").action = `/admin/questions/edit/${id}`;
+        document.getElementById("edit_question").value = question;
+        document.getElementById("edit_opt1").value = o1;
+        document.getElementById("edit_opt2").value = o2;
+        document.getElementById("edit_opt3").value = o3;
+        document.getElementById("edit_opt4").value = o4;
+        document.getElementById("edit_correct").value = correct;
+        document.getElementById("edit-q-modal").classList.add("active");
+    }
+    
+    function closeEditModal() {
+        document.getElementById("edit-q-modal").classList.remove("active");
+    }
+
+    // Payout Creator Modal
+    function openPayoutModal(userId, fullname) {
+        document.getElementById("payout-user-id").value = userId;
+        document.getElementById("payout-recipient-name").textContent = fullname;
+        document.getElementById("payout-modal").classList.add("active");
+    }
+
+    function closePayoutModal() {
+        document.getElementById("payout-modal").classList.remove("active");
+    }
+
+    // Transaction Details Ledger Modal
+    function openTxModal(txId, fullname, amount, status, utrId) {
+        document.getElementById("tx-update-form").action = `/admin/payout/update/${txId}`;
+        document.getElementById("tx-recipient-name").textContent = fullname;
+        document.getElementById("tx-amount-display").innerHTML = "&#8377;" + amount.toFixed(2);
+        document.getElementById("tx_status").value = status;
+        document.getElementById("tx_utr").value = utrId;
+        document.getElementById("tx-modal").classList.add("active");
+    }
+
+    function closeTxModal() {
+        document.getElementById("tx-modal").classList.remove("active");
+    }
+
+    // Wrapper functions to launch modals from data attributes (prevents quote parsing errors in HTML)
+    function openEditModalFromButton(btn) {
+        const id = btn.getAttribute("data-id");
+        const question = btn.getAttribute("data-question");
+        const o1 = btn.getAttribute("data-option1");
+        const o2 = btn.getAttribute("data-option2");
+        const o3 = btn.getAttribute("data-option3");
+        const o4 = btn.getAttribute("data-option4");
+        const correct = btn.getAttribute("data-correct");
+        openEditModal(id, question, o1, o2, o3, o4, correct);
+    }
+
+    function openPayoutModalFromButton(btn) {
+        const userId = btn.getAttribute("data-user-id");
+        const fullname = btn.getAttribute("data-fullname");
+        openPayoutModal(userId, fullname);
+    }
+
+    function openTxModalFromButton(btn) {
+        const txId = btn.getAttribute("data-tx-id");
+        const fullname = btn.getAttribute("data-fullname");
+        const amount = parseFloat(btn.getAttribute("data-amount"));
+        const status = btn.getAttribute("data-status");
+        const utrId = btn.getAttribute("data-utr-id");
+        openTxModal(txId, fullname, amount, status, utrId);
+    }
+
+    function deleteExcelRowFromButton(btn) {
+        const id = btn.getAttribute("data-id");
+        deleteExcelRow(parseInt(id));
+    }
+
+    function deleteAttemptFromButton(btn) {
+        const id = btn.getAttribute("data-id");
+        deleteAttempt(parseInt(id));
+    }
+
+    function resetUserQuiz(btn) {
+        const userId = btn.getAttribute("data-id");
+        const userName = btn.getAttribute("data-name") || "this user";
+        if (!confirm(`Reset quiz for "${userName}"? This will delete all their quiz attempts and progress, allowing them to retake the quiz.`)) {
+            return;
+        }
+        
+        updateExcelStatus("Resetting quiz...", "orange");
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch(`/api/admin/quiz/reset/${userId}`, {
+            method: "POST",
+            headers: { "X-CSRFToken": csrfToken }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateExcelStatus("Quiz reset successful", "var(--accent-green)");
+                showToast(data.message || "Quiz reset successfully.", "success");
+                // Refresh the page to reflect updated scores/ranks
+                location.reload();
+            } else {
+                showToast("Reset failed: " + data.message, "error");
+                updateExcelStatus("Reset error", "var(--accent-red)");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Network error.", "error");
+            updateExcelStatus("Network error", "var(--accent-red)");
+        });
+    }
+
+    // Export HTML table to CSV (Excel Native)
+    function exportTableToCSV(tableId, filename) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+        
+        let csv = [];
+        const rows = table.querySelectorAll("tr");
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = [];
+            const cols = rows[i].querySelectorAll("td, th");
+            
+            for (let j = 0; j < cols.length; j++) {
+                // Skip the actions column if it exists (usually the last column)
+                if (i > 0 && j === cols.length - 1 && (cols[j].querySelector("button") || cols[j].querySelector("form") || cols[j].innerHTML.includes("button"))) {
+                    continue; 
+                }
+                if (i === 0 && j === cols.length - 1 && cols[j].textContent.toLowerCase().includes("action")) {
+                    continue; 
+                }
+                
+                let data = cols[j].textContent.replace(/(\r\n|\n|\r)/gm, "").trim();
+                data = data.replace(/"/g, '""'); // Escape double quotes
+                row.push('"' + data + '"');
+            }
+            if (row.length > 0) {
+                csv.push(row.join(","));
+            }
+        }
+        
+        const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
+        const downloadLink = document.createElement("a");
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = "none";
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        downloadLink.remove();
+    }
+
+    // -------------------------------------------------------------
+    // EXCEL SPREADSHEET CRUD ENGINE
+    // -------------------------------------------------------------
+    let selectedCell = null;
+
+    function selectCell(td) {
+        if (selectedCell) {
+            selectedCell.classList.remove("excel-selected");
+        }
+        selectedCell = td;
+        selectedCell.classList.add("excel-selected");
+    }
+
+    // --- SHEET 1: REGISTERED USERS ---
+    function editCell(td) {
+        if (td.querySelector("input") || td.querySelector("select")) {
+            return;
+        }
+        
+        selectCell(td);
+        
+        const userId = td.getAttribute("data-user-id");
+        const field = td.getAttribute("data-field");
+        const currentValue = td.textContent.trim();
+        
+        td.setAttribute("data-original-val", currentValue);
+        td.innerHTML = "";
+        
+        if (field === "role") {
+            const select = document.createElement("select");
+            select.className = "excel-inline-select";
+            
+            const optUser = document.createElement("option");
+            optUser.value = "user";
+            optUser.textContent = "user";
+            const optAdmin = document.createElement("option");
+            optAdmin.value = "admin";
+            optAdmin.textContent = "admin";
+            
+            select.appendChild(optUser);
+            select.appendChild(optAdmin);
+            select.value = currentValue === "admin" ? "admin" : "user";
+            
+            select.addEventListener("blur", () => saveCell(td, select.value));
+            select.addEventListener("change", () => saveCell(td, select.value));
+            td.appendChild(select);
+            select.focus();
+        } else {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "excel-inline-input";
+            input.value = currentValue;
+            
+            input.addEventListener("blur", () => saveCell(td, input.value));
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    saveCell(td, input.value);
+                } else if (e.key === "Escape") {
+                    cancelCell(td);
+                }
+            });
+            td.appendChild(input);
+            input.focus();
+            input.select();
+        }
+    }
+
+    function cancelCell(td) {
+        const originalVal = td.getAttribute("data-original-val");
+        if (td.getAttribute("data-field") === "role") {
+            td.innerHTML = `<span class="status-badge" style="background: ${originalVal === 'admin' ? 'rgba(157, 78, 221, 0.15)' : 'rgba(255,255,255,0.05)'}; color: ${originalVal === 'admin' ? '#d8b4fe' : 'var(--text-secondary)'};">${originalVal}</span>`;
+        } else {
+            td.textContent = originalVal;
+        }
+    }
+
+    function saveCell(td, newValue) {
+        const userId = td.getAttribute("data-user-id");
+        const field = td.getAttribute("data-field");
+        const originalVal = td.getAttribute("data-original-val");
+        
+        if (newValue === originalVal) {
+            cancelCell(td);
+            return;
+        }
+        
+        updateExcelStatus("Saving...", "orange");
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch("/api/admin/users/update", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({
+                user_id: parseInt(userId),
+                field: field,
+                value: newValue
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateExcelStatus("All changes saved", "var(--accent-green)");
+                if (field === "role") {
+                    td.innerHTML = `<span class="status-badge" style="background: ${newValue === 'admin' ? 'rgba(157, 78, 221, 0.15)' : 'rgba(255,255,255,0.05)'}; color: ${newValue === 'admin' ? '#d8b4fe' : 'var(--text-secondary)'};">${newValue}</span>`;
+                } else {
+                    td.textContent = newValue;
+                }
+                td.style.backgroundColor = "rgba(16, 124, 65, 0.2)";
+                setTimeout(() => {
+                    td.style.backgroundColor = "";
+                }, 1000);
+            } else {
+                showToast("Error: " + data.message, "error");
+                updateExcelStatus("Error saving", "var(--accent-red)");
+                cancelCell(td);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Network error. Save failed.", "error");
+            updateExcelStatus("Network error", "var(--accent-red)");
+            cancelCell(td);
+        });
+    }
+
+    function updateExcelStatus(text, color) {
+        const statusEl = document.getElementById("excel-status");
+        if (statusEl) {
+            statusEl.innerHTML = `<span style="color: ${color};">●</span> ${text}`;
+        }
+    }
+
+    function insertExcelRow() {
+        updateExcelStatus("Adding row...", "orange");
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch("/api/admin/users/create", {
+            method: "POST",
+            headers: { "X-CSRFToken": csrfToken }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateExcelStatus("Row inserted", "var(--accent-green)");
+                
+                const noUsersRow = document.getElementById("no-users-row");
+                if (noUsersRow) {
+                    noUsersRow.remove();
+                }
+                
+                const tbody = document.getElementById("excel-users-body");
+                const newRow = document.createElement("tr");
+                newRow.id = `user-row-${data.user.id}`;
+                
+                const rowCount = tbody.querySelectorAll("tr").length + 1;
+                
+                newRow.innerHTML = `
+                    <th class="excel-row-num">${rowCount}</th>
+                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="${data.user.id}" data-field="fullname">${data.user.fullname}</td>
+                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="${data.user.id}" data-field="phone">${data.user.phone}</td>
+                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="${data.user.id}" data-field="upi_id" style="color: var(--accent-blue);"></td>
+                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="${data.user.id}" data-field="payment_number"></td>
+                    <td onclick="selectCell(this)" ondblclick="editCell(this)" data-user-id="${data.user.id}" data-field="role">
+                        <span class="status-badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary);">${data.user.role}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <button class="excel-ribbon-btn danger" onclick="deleteExcelRow(${data.user.id})" style="padding: 4px 8px; font-size: 0.75rem;">
+                            Delete
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(newRow);
+            } else {
+                showToast("Error creating user: " + data.message, "error");
+                updateExcelStatus("Creation error", "var(--accent-red)");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Network error.", "error");
+            updateExcelStatus("Network error", "var(--accent-red)");
+        });
+    }
+
+    function deleteExcelRow(userId) {
+        if (!confirm("Are you sure you want to delete this user? All their quiz attempts and transactions will also be permanently deleted.")) {
+            return;
+        }
+        
+        updateExcelStatus("Deleting row...", "orange");
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch(`/api/admin/users/delete/${userId}`, {
+            method: "POST",
+            headers: { "X-CSRFToken": csrfToken }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateExcelStatus("Row deleted", "var(--accent-green)");
+                const row = document.getElementById(`user-row-${userId}`);
+                if (row) {
+                    row.remove();
+                    reindexExcelRows();
+                }
+            } else {
+                showToast("Delete failed: " + data.message, "error");
+                updateExcelStatus("Delete error", "var(--accent-red)");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Network error.", "error");
+            updateExcelStatus("Network error", "var(--accent-red)");
+        });
+    }
+
+    function reindexExcelRows() {
+        const tbody = document.getElementById("excel-users-body");
+        const numHeaders = tbody.querySelectorAll("th.excel-row-num");
+        numHeaders.forEach((th, idx) => {
+            th.textContent = idx + 1;
+        });
+        
+        if (tbody.querySelectorAll("tr").length === 0) {
+            tbody.innerHTML = `
+                <tr id="no-users-row">
+                    <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 20px;">No users registered yet.</td>
+                </tr>
+            `;
+        }
+    }
+
+    // --- SHEET 2: QUIZ ATTENDEES ---
+    function editAttemptCell(td) {
+        if (td.querySelector("input")) return;
+        
+        selectCell(td);
+        
+        const attemptId = td.getAttribute("data-attempt-id");
+        const field = td.getAttribute("data-field");
+        const currentValue = parseInt(td.textContent.trim());
+        
+        td.setAttribute("data-original-val", currentValue);
+        td.innerHTML = "";
+        
+        const input = document.createElement("input");
+        input.type = "number";
+        input.className = "excel-inline-input";
+        input.value = currentValue;
+        
+        input.addEventListener("blur", () => saveAttemptCell(td, input.value));
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                saveAttemptCell(td, input.value);
+            } else if (e.key === "Escape") {
+                td.textContent = currentValue + (field === "score" ? " pts" : " seconds");
+            }
+        });
+        
+        td.appendChild(input);
+        input.focus();
+        input.select();
+    }
+
+    function saveAttemptCell(td, newValue) {
+        const attemptId = td.getAttribute("data-attempt-id");
+        const field = td.getAttribute("data-field");
+        const originalVal = parseInt(td.getAttribute("data-original-val"));
+        
+        if (newValue === "" || parseInt(newValue) === originalVal) {
+            td.textContent = originalVal + (field === "score" ? " pts" : " seconds");
+            return;
+        }
+        
+        const scoreVal = field === "score" ? parseInt(newValue) : parseInt(td.parentNode.querySelector("[data-field='score']").textContent);
+        const durationVal = field === "time_taken" ? parseInt(newValue) : parseInt(td.parentNode.querySelector("[data-field='time_taken']").textContent);
+        
+        updateAttemptsStatus("Saving...", "orange");
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch("/api/admin/attempts/update", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({
+                attempt_id: parseInt(attemptId),
+                score: scoreVal,
+                time_taken: durationVal
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateAttemptsStatus("All changes saved", "var(--accent-green)");
+                td.textContent = newValue + (field === "score" ? " pts" : " seconds");
+                td.style.backgroundColor = "rgba(16, 124, 65, 0.2)";
+                setTimeout(() => {
+                    td.style.backgroundColor = "";
+                }, 1000);
+            } else {
+                showToast("Error: " + data.message, "error");
+                updateAttemptsStatus("Error saving", "var(--accent-red)");
+                td.textContent = originalVal + (field === "score" ? " pts" : " seconds");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Network error.", "error");
+            updateAttemptsStatus("Network error", "var(--accent-red)");
+            td.textContent = originalVal + (field === "score" ? " pts" : " seconds");
+        });
+    }
+
+    function deleteAttempt(attemptId) {
+        if (!confirm("Are you sure you want to delete this attempt? This will clear the user's score record and allow them to take the quiz again.")) {
+            return;
+        }
+        
+        updateAttemptsStatus("Deleting attempt...", "orange");
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch(`/api/admin/attempts/delete/${attemptId}`, {
+            method: "POST",
+            headers: { "X-CSRFToken": csrfToken }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateAttemptsStatus("Attempt deleted", "var(--accent-green)");
+                const row = document.getElementById(`attempt-row-${attemptId}`);
+                if (row) {
+                    row.remove();
+                    reindexAttemptRows();
+                }
+            } else {
+                showToast("Delete failed: " + data.message, "error");
+                updateAttemptsStatus("Delete error", "var(--accent-red)");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showToast("Network error.", "error");
+            updateAttemptsStatus("Network error", "var(--accent-red)");
+        });
+    }
+
+    function reindexAttemptRows() {
+        const tbody = document.getElementById("excel-attempts-body");
+        const numHeaders = tbody.querySelectorAll("th.excel-row-num");
+        numHeaders.forEach((th, idx) => {
+            th.textContent = idx + 1;
+        });
+        
+        const rankCells = tbody.querySelectorAll("td.attempt-rank");
+        rankCells.forEach((td, idx) => {
+            td.innerHTML = `<strong>#${idx + 1}</strong>`;
+        });
+        
+        if (tbody.querySelectorAll("tr").length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-secondary); padding: 20px;">No attempts registered yet.</td>
+                </tr>
+            `;
+        }
+    }
+
+    function updateAttemptsStatus(text, color) {
+        const statusEl = document.getElementById("excel-attempts-status");
+        if (statusEl) {
+            statusEl.innerHTML = `<span style="color: ${color};">●</span> ${text}`;
+        }
+    }
+    // ==========================================
+    // Participant Contacts — Copy Functions
+    // ==========================================
+    
+    function showToast(message) {
+        let toast = document.getElementById('admin-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'admin-toast';
+            toast.style.cssText = 'position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--teal); color: #000; padding: 10px 24px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; z-index: 99999; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; font-family: Outfit, sans-serif; box-shadow: 0 4px 16px rgba(0,255,170,0.3);';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.style.opacity = '1';
+        setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+    }
+
+    function copyPhone(phoneNumber) {
+        navigator.clipboard.writeText(phoneNumber).then(() => {
+            showToast('Phone number copied successfully.');
+        }).catch(() => {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = phoneNumber;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('Phone number copied successfully.');
+        });
+    }
+
+    function copyAllPhoneNumbers() {
+        const phoneCells = document.querySelectorAll('#contacts-tab td[id^="phone-"]');
+        const numbers = [];
+        phoneCells.forEach(cell => {
+            const num = cell.textContent.trim();
+            if (num && num !== 'Unverified') {
+                numbers.push(num);
+            }
+        });
+        
+        if (numbers.length === 0) {
+            showToast('No verified phone numbers to copy.');
+            return;
+        }
+        
+        const allNumbers = numbers.join('\n');
+        navigator.clipboard.writeText(allNumbers).then(() => {
+            showToast(`${numbers.length} phone number(s) copied successfully.`);
+        }).catch(() => {
+            const textarea = document.createElement('textarea');
+            textarea.value = allNumbers;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast(`${numbers.length} phone number(s) copied successfully.`);
+        });
+    }
+
+    function toggleAllQuestions(source) {
+        const checkboxes = document.querySelectorAll('.question-checkbox');
+        checkboxes.forEach(cb => cb.checked = source.checked);
+    }
+</script>
+{% endblock %}

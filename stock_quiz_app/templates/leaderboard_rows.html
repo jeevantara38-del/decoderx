@@ -1,0 +1,34 @@
+{% for lb in leaderboard %}
+<tr class="{% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% endif %} {% if session.get('user_id') == lb.user_id %}highlight-me{% endif %}">
+    <td class="col-rank">
+        {% if loop.index == 1 %}
+            <span class="medal">🥇</span>
+        {% elif loop.index == 2 %}
+            <span class="medal">🥈</span>
+        {% elif loop.index == 3 %}
+            <span class="medal">🥉</span>
+        {% else %}
+            #{{ loop.index }}
+        {% endif %}
+    </td>
+    <td class="col-name">
+        <div class="trader-info">
+            <div class="trader-avatar">
+                {% if lb.profile_image %}
+                    <img src="{{ lb.profile_image }}" alt="avatar" />
+                {% else %}
+                    {{ lb.fullname[:2]|upper }}
+                {% endif %}
+            </div>
+            <div class="trader-details">
+                <span class="t-name">{{ lb.fullname }}</span>
+                {% if session.get('user_id') == lb.user_id %}
+                <span class="t-badge">YOU</span>
+                {% endif %}
+            </div>
+        </div>
+    </td>
+    <td class="col-time">{{ lb.best_time|int }}s</td>
+    <td class="col-score">{{ lb.top_score }} pts</td>
+</tr>
+{% endfor %}

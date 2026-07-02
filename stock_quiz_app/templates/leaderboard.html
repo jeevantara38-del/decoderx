@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — DECODER{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; padding: 20px;">
+    <h2 class="dash-title">Top Performers</h2>
+    <p class="dash-sub">See who is leading the charts</p>
+
+    <div class="glass comp-card" style="padding: 20px; margin-top: 20px;">
+        <div class="table-responsive">
+            <table class="leaderboard-table" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">Rank</th>
+                        <th>Participant</th>
+                        <th class="text-right" style="text-align: right;">Score</th>
+                        <th class="text-right" style="text-align: right;">Time</th>
+                    </tr>
+                </thead>
+                <tbody id="lb-body">
+                    {% if leaderboard %}
+                        {% for leader in leaderboard %}
+                            <tr>
+                                <td>
+                                    <div class="rank-badge rank-{{ loop.index }}">
+                                        {{ loop.index }}
+                                    </div>
+                                </td>
+                                <td style="font-weight: 600;">
+                                    {{ leader.fullname }}
+                                </td>
+                                <td class="text-right" style="text-align: right; color: var(--teal); font-weight: 700;">
+                                    {{ leader.top_score }} pts
+                                </td>
+                                <td class="text-right" style="text-align: right; font-size: 0.85rem; color: var(--text-sub);">
+                                    {{ leader.best_time }}s
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px; font-size: 0.85rem;">
+                                No performance records submitted yet. Be the first!
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

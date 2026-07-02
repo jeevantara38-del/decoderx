@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Reward Verification - DECODER{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh; padding: 20px;">
+    <div class="glass auth-card" style="max-width: 440px; width: 100%; text-align: center; border-color: var(--border-teal); box-shadow: 0 0 35px var(--teal-dim), 0 0 80px rgba(0, 255, 170, 0.08); padding: 35px; position: relative; overflow: hidden;">
+        
+        <!-- Decorative glow -->
+        <div style="position: absolute; top: -40px; left: 50%; transform: translateX(-50%); width: 200px; height: 200px; background: radial-gradient(circle, rgba(0,255,170,0.15) 0%, transparent 70%); pointer-events: none;"></div>
+        
+        <!-- Trophy Icon -->
+        <div style="font-size: 3.5rem; margin-bottom: 10px; filter: drop-shadow(0 0 20px rgba(255,215,0,0.4));">
+            🏆
+        </div>
+        
+        <h2 style="color: var(--teal); font-size: 1.9rem; font-family: 'Outfit'; margin-bottom: 6px; position: relative;">
+            Congratulations!
+        </h2>
+        <p style="color: var(--text-sub); font-size: 0.95rem; margin-bottom: 22px;">
+            You have successfully completed the quiz.
+        </p>
+        
+        <p style="color: var(--text-sub); font-size: 0.88rem; margin-bottom: 22px; line-height: 1.6;">
+            To be eligible for rewards and payouts, please verify your mobile number. This will be used to process your UPI transactions.
+        </p>
+        
+        <form id="reward-verify-form" style="text-align: left;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="form-group" id="verify-fg-mobile" style="margin-bottom: 16px;">
+                <input type="tel" id="verify_phone_number" name="phone_number" pattern="[0-9]{10}" maxlength="10" autocomplete="off" required oninput="checkVal('verify-fg-mobile','verify_phone_number')" onfocus="checkVal('verify-fg-mobile','verify_phone_number')" onblur="checkVal('verify-fg-mobile','verify_phone_number')">
+                <label>Mobile Number (10 digits) *</label>
+            </div>
+            
+            <!-- Validation message -->
+            <div id="verify-error" style="display: none; color: #ff4d6d; font-size: 0.85rem; margin-bottom: 12px; padding: 10px; background: rgba(255,77,109,0.08); border-radius: 8px; border: 1px solid rgba(255,77,109,0.15);">
+            </div>
+            
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1rem; font-weight: 700; letter-spacing: 0.5px;">
+                Verify Mobile Number
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById("reward-verify-form").addEventListener("submit", async function(e) {
+        e.preventDefault();
+        const errorEl = document.getElementById("verify-error");
+        errorEl.style.display = "none";
+        
+        let phone_number = document.getElementById("verify_phone_number").value.trim();
+        
+        // Client-side validation
+        if (!phone_number || !/^[6-9][0-9]{9}$/.test(phone_number)) {
+            errorEl.textContent = "Please enter a valid 10-digit Indian mobile number.";
+            errorEl.style.display = "block";
+            return;
+        }
+
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Verifying...";
+
+        try {
+            const formData = new FormData();
+            formData.append("phone_number", phone_number);
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            const response = await fetch("/api/user/verify_mobile", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": csrfToken
+                },
+                body: formData
+            });
+            const data = await response.json();
+            
+            if(data.success) {
+                // Show success toast
+                const banner = document.createElement("div");
+                banner.className = "sync-banner";
+                banner.innerHTML = `✅ ${data.message}`;
+                document.body.appendChild(banner);
+                setTimeout(() => {
+                    banner.style.animation = "slideUp 0.3s ease-in reverse forwards";
+                    setTimeout(() => {
+                        banner.remove();
+                        window.location.href = "/dashboard";
+                    }, 300);
+                }, 1500);
+            } else {
+                errorEl.textContent = data.message || "Failed to verify details. Please try again.";
+                errorEl.style.display = "block";
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Verify Mobile Number";
+            }
+        } catch(error) {
+            console.error("Error verifying mobile:", error);
+            errorEl.textContent = "Connection error. Please check your internet and try again.";
+            errorEl.style.display = "block";
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Verify Mobile Number";
+        }
+    });
+</script>
+{% endblock %}

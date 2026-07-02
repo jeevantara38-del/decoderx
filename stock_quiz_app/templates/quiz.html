@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Trading Desk - DECODER Quiz</title>
+    <meta name="description" content="Secure Stock Market Quiz Trading Desk">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body style="min-height: 100vh;">
+
+    <!-- SCREENSHOT DETERRENCE WATERMARK -->
+    <div id="quiz-watermark" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999; display: none; overflow: hidden;">
+        <!-- Filled dynamically by script.js -->
+    </div>
+    
+    <script>
+        window.USER_FULLNAME = "{{ current_user.fullname|escape if current_user else '' }}";
+        window.USER_PHONE = "{{ current_user.phone_number|escape if current_user else '' }}";
+    </script>
+    <!-- ORB BACKGROUND -->
+    <div class="orb-wrap">
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="orb orb-c"></div>
+        <div class="orb orb-d"></div>
+    </div>
+
+    <!-- Quiz Rules Modal -->
+    <div id="quiz-rules-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(5px); z-index: 10000; justify-content: center; align-items: center; padding: 20px;">
+        <div class="glass auth-card" style="max-width: 500px; width: 100%; padding: 30px; border: 1px solid rgba(255, 77, 109, 0.3);">
+            <h2 style="font-family: 'Outfit'; font-size: 1.8rem; margin-bottom: 20px; color: #ff4d6d; text-align: center;">Mandatory Quiz Rules</h2>
+            <ul style="color: var(--text-secondary); font-size: 1rem; line-height: 1.6; margin-bottom: 30px; text-align: left; padding-left: 20px;">
+                <li style="margin-bottom: 10px;">Do not switch tabs or minimize the browser.</li>
+                <li style="margin-bottom: 10px;">Do not exit fullscreen mode.</li>
+                <li style="margin-bottom: 10px;">Do not refresh or go back during the quiz.</li>
+                <li style="margin-bottom: 10px;">Any suspicious activity may result in warnings or automatic quiz submission.</li>
+                <li style="margin-bottom: 10px;">Ensure a stable internet connection before starting.</li>
+            </ul>
+            <button id="agree-rules-btn" class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem; letter-spacing: 1px;">I Agree & Start Quiz</button>
+        </div>
+    </div>
+
+    <!-- Centered mobile app frame -->
+    <div id="app" class="focus-layout">
+
+
+
+        <!-- Main Quiz Content Wrapper -->
+        <div style="flex-grow: 1; display: flex; flex-direction: column; width: 100%; padding: 20px 18px 90px;">
+            
+            <!-- Welcome / Start Screen -->
+            <div id="quiz-welcome" class="glass auth-card" style="max-width: 430px; margin: 0 auto; text-align: center; padding: 40px 20px;">
+                <div class="auth-logo-icon" style="margin: 0 auto 20px; width: 60px; height: 60px;">
+                    <img src="{{ url_for('static', filename='decoder_logo.png') }}" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+                <h2 style="font-family: 'Outfit'; font-size: 1.6rem; margin-bottom: 15px; color: var(--accent-blue);">Ready to begin?</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 30px; font-size: 0.95rem; line-height: 1.5;">The quiz runs in strict fullscreen mode. <br><br><strong style="color: #ff4d6d;">Warning:</strong> Exiting fullscreen during the quiz will result in automatic submission.</p>
+                <button id="start-quiz-btn" class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem; letter-spacing: 1px;">Enter Fullscreen & Start</button>
+            </div>
+
+            <!-- Timed Quiz Desk -->
+            <div id="quiz-content" class="glass auth-card" style="max-width: 430px; margin: 0 auto; display: none;">
+                
+
+
+                <!-- Timer & Progress Row -->
+                <div class="timer-row">
+                    <div class="timer-circle">
+                        <svg width="46" height="46">
+                            <circle cx="23" cy="23" r="20" stroke="var(--prog-bg)" stroke-width="3" fill="transparent"/>
+                            <circle id="timer-arc" cx="23" cy="23" r="20" stroke="var(--teal)" stroke-width="3" fill="transparent"
+                                    stroke-dasharray="125.6" stroke-dashoffset="0" stroke-linecap="round"/>
+                        </svg>
+                        <div class="timer-inner">
+                            <div class="timer-secs">SEC</div>
+                        </div>
+                    </div>
+                    <div style="flex-grow: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px;">
+                            <span class="timer-sub" style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.8em; font-size: 8px;">QUESTION CLOCK</span>
+                            <span class="timer-val" id="timer-display">00:30</span>
+                        </div>
+                        <div class="prog-wrap">
+                            <div class="prog-fill" id="progress-bar-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question Count Tag -->
+                <div class="quiz-meta" style="margin-top: 18px; margin-bottom: 12px;">
+                    <span class="quiz-tag">Question <span id="current-q-num">0</span> / <span id="total-q-num">0</span></span>
+                </div>
+
+                <!-- Question dots navigation helper removed for strict 30s linear flow -->
+
+                <!-- Question Text -->
+                <p id="question-text" class="q-text">Loading question...</p>
+                
+                <!-- Options Grid -->
+                <div id="options-grid">
+                    <!-- Loaded dynamically via JavaScript as .option -->
+                </div>
+
+                <!-- Footer Operations -->
+                <div class="nav-btns" style="margin-top: 20px;">
+                    <button id="prev-btn" class="btn-cyber secondary" style="display: none; flex: 1;">
+                        Prev
+                    </button>
+                    <button id="next-btn" class="btn-primary" style="flex: 2;" disabled>
+                        Next Question
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Fixed Bottom Navigation Tab Bar (inactive / read-only during quiz, but styled nicely) -->
+        <div class="tabbar">
+            <a href="#" class="tab-item" style="cursor: not-allowed; pointer-events: none;">
+                <div class="tab-icon">
+                    <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--text-muted);">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                </div>
+                <div class="tab-lbl">Dashboard</div>
+                <div class="tab-dot"></div>
+            </a>
+            <a href="#" class="tab-item" style="cursor: not-allowed; pointer-events: none;">
+                <div class="tab-icon act">
+                    <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--teal);">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <div class="tab-lbl act">Quiz Desk</div>
+                <div class="tab-dot act"></div>
+            </a>
+            <a href="#" class="tab-item" style="cursor: not-allowed; pointer-events: none;">
+                <div class="tab-icon">
+                    <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="stroke: var(--text-muted);">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </div>
+                <div class="tab-lbl">Logout</div>
+                <div class="tab-dot"></div>
+            </a>
+        </div>
+
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+</body>
+</html>

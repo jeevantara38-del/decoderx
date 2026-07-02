@@ -1,0 +1,11 @@
+.vercel
+.env
+.env.*
+__pycache__/
+*.pyc
+*.db
+*.log
+scratch/
+
+.vercel
+.env*

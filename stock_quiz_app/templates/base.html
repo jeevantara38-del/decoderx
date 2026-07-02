@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>{% block title %}DECODER — Stock Market Quiz{% endblock %}</title>
+    <!-- Meta tags for premium startup feel -->
+    <meta name="description" content="DECODER - Participate in real-time stock market quizzes, show your skills, beat the leaderboard, and win direct UPI rewards.">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="pusher-key" content="{{ PUSHER_KEY }}">
+    <meta name="pusher-cluster" content="{{ PUSHER_CLUSTER }}">
+
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    
+    <!-- ORB BACKGROUND (shared across all screens) -->
+    <div class="orb-wrap">
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="orb orb-c"></div>
+        <div class="orb orb-d"></div>
+    </div>
+
+    <div id="app" class="{% if request.endpoint == 'admin_dashboard' %}admin-layout{% endif %}">
+        
+        <!-- Flash Messages Container -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-alert {{ category }}">
+                            <span>{{ message }}</span>
+                            <span style="cursor:pointer; margin-left: 15px; font-weight: bold;" onclick="this.parentElement.style.display='none';">&times;</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Unified Layout Wrapper -->
+        <div class="{% if request.endpoint not in ['login', 'register', 'forgot_password', 'admin_login'] %}dashboard-container{% else %}auth-container{% endif %}">
+            
+            {% if request.endpoint not in ['login', 'register', 'forgot_password', 'admin_login'] %}
+            <!-- Permanent Sidebar (Desktop only) -->
+            <aside class="sidebar-desktop">
+                <div class="sidebar-brand">
+                    <div class="logo-icon">
+                            <img src="{{ url_for('static', filename='decoder_logo.png') }}" alt="DECODER Logo" style="width: 28px; height: 28px; object-fit: contain; border-radius: 6px; filter: drop-shadow(0 2px 6px rgba(56, 189, 248, 0.5));" loading="lazy">
+                    </div>
+                    <div class="brand">DE<span>C</span>ODER</div>
+                </div>
+                
+                <div class="sidebar-menu">
+                    {% if session.get('user_id') %}
+                        <a href="{{ url_for('dashboard') }}" class="sidebar-item {% if request.endpoint == 'dashboard' %}act{% endif %}">
+                            <span class="sidebar-icon">
+                                <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                                </svg>
+                            </span>
+                            <span class="sidebar-lbl">Dashboard</span>
+                        </a>
+                        <a href="{{ url_for('quiz') }}" class="sidebar-item {% if request.endpoint == 'quiz' %}act{% endif %}">
+                            <span class="sidebar-icon">
+                                <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                </svg>
+                            </span>
+                            <span class="sidebar-lbl">Quiz Desk</span>
+                        </a>
+                    {% endif %}
+                    
+                    {% if session.get('admin') or session.get('role') == 'admin' %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="sidebar-item {% if request.endpoint == 'admin_dashboard' %}act{% endif %}">
+                            <span class="sidebar-icon">
+                                <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                                </svg>
+                            </span>
+                            <span class="sidebar-lbl">Admin Console</span>
+                        </a>
+                    {% endif %}
+                    
+                    {% if session.get('user_id') or session.get('admin') %}
+                        <a href="{{ url_for('logout') }}" class="sidebar-item logout-link">
+                            <span class="sidebar-icon">
+                                <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                    <polyline points="16 17 21 12 16 7"></polyline>
+                                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                                </svg>
+                            </span>
+                            <span class="sidebar-lbl">Logout</span>
+                        </a>
+                    {% endif %}
+                    
+
+                </div>
+            </aside>
+            {% endif %}
+
+            <div class="{% if request.endpoint not in ['login', 'register', 'forgot_password', 'admin_login'] %}main-content-wrapper{% else %}auth-content-wrapper{% endif %}">
+                
+                {% if request.endpoint not in ['login', 'register', 'forgot_password', 'admin_login'] %}
+                <!-- Mobile / Sticky Top Nav -->
+                <nav class="topnav">
+                    <a href="{{ url_for('index') }}" class="logo-row" style="text-decoration: none;">
+                        <div class="logo-icon">
+                            <img src="{{ url_for('static', filename='decoder_logo.png') }}" alt="DECODER Logo" style="width: 28px; height: 28px; object-fit: contain; border-radius: 6px; filter: drop-shadow(0 2px 6px rgba(56, 189, 248, 0.5));" loading="lazy">
+                        </div>
+                        <div class="brand">DE<span>C</span>ODER</div>
+                    </a>
+                    <div class="nav-right">
+                        {% if request.endpoint == 'quiz' %}
+                        <div class="net-pill online" id="netPill">
+                            <div class="ndot"></div>
+                            <span id="netTxt">Online</span>
+                        </div>
+                        {% endif %}
+
+                        {% if session.get('user_id') %}
+                            <!-- Notification Bell -->
+                            <div class="notification-icon" style="color: var(--text-sub); cursor: pointer; padding: 5px; margin-right: 8px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                </svg>
+                            </div>
+                            <a href="{{ url_for('profile_page') }}" class="avatar" title="Profile" {% if session.get('profile_image') %}style="background-image: url('{{ session.get('profile_image') }}'); background-size: cover; color: transparent;"{% endif %}>
+                                {% if session.get('role') == 'admin' %}A{% else %}{{ session.get('fullname')[0]|upper }}{% endif %}
+                            </a>
+                        {% elif session.get('admin') %}
+                            <a href="{{ url_for('admin_dashboard') }}" class="btn-cyber secondary" style="padding: 6px 10px; font-size: 0.75rem; width: auto; border-radius: 8px; box-shadow: none;">Admin</a>
+                            <a href="{{ url_for('logout') }}" class="btn-cyber danger" style="padding: 6px 10px; font-size: 0.75rem; width: auto; border-radius: 8px; box-shadow: none;">Logout</a>
+                        {% endif %}
+                    </div>
+                </nav>
+                {% endif %}
+
+                <!-- Single block content in the template! -->
+                <main style="flex-grow: 1; display: flex; flex-direction: column; width: 100%; position: relative;">
+
+                    {% block content %}{% endblock %}
+                </main>
+
+                {% if request.endpoint not in ['login', 'register', 'forgot_password', 'admin_login'] %}
+                <!-- Simple Fintech Footer -->
+                <footer style="padding: 24px 0; border-top: 1px solid var(--border); background: var(--tab-bg); text-align: center; font-size: 0.8rem; color: var(--text-muted); width: 100%;">
+                    <div class="container" style="padding: 0 16px;">
+                        <p>&copy; 2026 DECODER Inc. All rights reserved. Secure payouts via UPI. Terms and warnings apply.</p>
+                    </div>
+                </footer>
+                {% endif %}
+
+                <!-- Bottom Navigation Tab Bar (Global Mobile) -->
+                {% if request.endpoint not in ['login', 'register', 'forgot_password', 'admin_login'] and session.get('user_id') %}
+                <div class="tabbar">
+                    <a href="{{ url_for('dashboard') }}" class="tab-item {% if request.endpoint == 'dashboard' %}act{% endif %}">
+                        <div class="tab-icon">
+                            <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="20" x2="18" y2="10"></line>
+                                <line x1="12" y1="20" x2="12" y2="4"></line>
+                                <line x1="6" y1="20" x2="6" y2="14"></line>
+                            </svg>
+                        </div>
+                        <div class="tab-lbl">Dashboard</div>
+                        <div class="tab-dot"></div>
+                    </a>
+                    <a href="{{ url_for('quiz') }}" class="tab-item {% if request.endpoint == 'quiz' %}act{% endif %}">
+                        <div class="tab-icon">
+                            <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
+                        </div>
+                        <div class="tab-lbl">Quiz Desk</div>
+                        <div class="tab-dot"></div>
+                    </a>
+                    <a href="{{ url_for('leaderboard_page') }}" class="tab-item {% if request.endpoint == 'leaderboard_page' %}act{% endif %}">
+                        <div class="tab-icon">
+                            <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                            </svg>
+                        </div>
+                        <div class="tab-lbl">Top List</div>
+                        <div class="tab-dot"></div>
+                    </a>
+                    <a href="{{ url_for('rewards_page') }}" class="tab-item {% if request.endpoint == 'rewards_page' %}act{% endif %}">
+                        <div class="tab-icon">
+                            <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="16"></line>
+                                <line x1="8" y1="12" x2="16" y2="12"></line>
+                            </svg>
+                        </div>
+                        <div class="tab-lbl">Rewards</div>
+                        <div class="tab-dot"></div>
+                    </a>
+                    <a href="{{ url_for('profile_page') }}" class="tab-item {% if request.endpoint == 'profile_page' %}act{% endif %}">
+                        <div class="tab-icon">
+                            <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                        <div class="tab-lbl">Profile</div>
+                        <div class="tab-dot"></div>
+                    </a>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+    <!-- Theme Toggle and Auto fadeout flash alerts scripts -->
+    <script>
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast-notification toast-${type}`;
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <span class="toast-icon">${type === 'success' ? '✓' : '✕'}</span>
+                    <span class="toast-message">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideDown 0.3s ease-out reverse forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        /* Floating label helper */
+        function checkVal(fgId, inputId) {
+            const fg = document.getElementById(fgId);
+            const inp = document.getElementById(inputId);
+            if (!fg || !inp) return;
+            fg.classList.toggle('has-val', inp.value.length > 0);
+        }
+
+        /* Password eye toggle helper */
+        function toggleEye(inputId, btn) {
+            const inp = document.getElementById(inputId);
+            if (!inp) return;
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                inp.type = 'password';
+                btn.textContent = '👁';
+            }
+        }
+
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.flash-alert');
+            alerts.forEach(alert => {
+                alert.style.transition = 'opacity 0.5s ease-out';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000);
+    </script>
+
+    <!-- Hidden Admin Access System -->
+    <div id="secret-admin-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(10px);">
+        <div style="background: var(--surface); padding: 32px; border-radius: 16px; width: 90%; max-width: 400px; border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h3 style="margin: 0; font-family: 'Outfit'; color: var(--text);">Admin Access</h3>
+                <button onclick="closeSecretAdminModal()" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem;">&times;</button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">Enter the Secret Admin Key to authenticate.</p>
+            <input type="password" id="secret-admin-key" placeholder="Secret Key" style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); margin-bottom: 16px; font-family: 'Inter';">
+            <div id="secret-admin-error" style="color: #ff4d4f; font-size: 0.85rem; margin-bottom: 16px; display: none;"></div>
+            <button onclick="submitSecretAdminKey()" class="btn-primary" id="secret-admin-btn">
+                <span>Authenticate</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function openSecretAdminModal() {
+            // Only allow if logged in. We can check if the modal exists, but the API will enforce it anyway.
+            document.getElementById('secret-admin-modal').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('secret-admin-key').focus();
+            }, 100);
+        }
+
+        function closeSecretAdminModal() {
+            document.getElementById('secret-admin-modal').style.display = 'none';
+            document.getElementById('secret-admin-key').value = '';
+            document.getElementById('secret-admin-error').style.display = 'none';
+        }
+
+        async function submitSecretAdminKey() {
+            const key = document.getElementById('secret-admin-key').value;
+            const btn = document.getElementById('secret-admin-btn');
+            const err = document.getElementById('secret-admin-error');
+            
+            if (!key) return;
+            
+            err.style.display = 'none';
+            btn.disabled = true;
+            btn.innerHTML = '<div class="auth-spinner" style="display: inline-block;"></div>';
+            
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const response = await fetch('/api/admin/auth_secret', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ secret_key: key })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    window.location.href = '/admin';
+                } else {
+                    err.textContent = data.message || "Access Denied";
+                    err.style.display = 'block';
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>Authenticate</span>';
+                }
+            } catch (e) {
+                err.textContent = "Network error. Try again.";
+                err.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = '<span>Authenticate</span>';
+            }
+        }
+
+        // Global Keyboard Shortcut: Ctrl + Shift + A
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+                e.preventDefault();
+                openSecretAdminModal();
+            }
+            // Enter key to submit inside modal
+            if (e.key === 'Enter' && document.getElementById('secret-admin-modal').style.display === 'flex') {
+                submitSecretAdminKey();
+            }
+            // Esc key to close modal
+            if (e.key === 'Escape' && document.getElementById('secret-admin-modal').style.display === 'flex') {
+                closeSecretAdminModal();
+            }
+        });
+    </script>
+    
+    <!-- Real-time Polling Integration (Vercel-Friendly) -->
+    <script>
+        const pusherKey = document.querySelector('meta[name="pusher-key"]')?.content;
+        const pusherCluster = document.querySelector('meta[name="pusher-cluster"]')?.content;
+        
+        if (pusherKey && pusherCluster) {
+            const pusher = new Pusher(pusherKey, {
+                cluster: pusherCluster
+            });
+            
+            const channel = pusher.subscribe('decoder-channel');
+            
+            channel.bind('quiz_status_changed', function(data) {
+                window.dispatchEvent(new CustomEvent('decoder:quiz_status_changed', { 
+                    detail: { is_active: data.is_active }
+                }));
+            });
+            
+            channel.bind('quiz_settings_changed', function(data) {
+                window.dispatchEvent(new CustomEvent('decoder:quiz_settings_changed', { 
+                    detail: data
+                }));
+            });
+            
+            channel.bind('admin_announcement', function(data) {
+                if (typeof showToast === 'function') {
+                    showToast('📢 ADMIN: ' + data.message, 'success');
+                } else {
+                    alert('📢 ADMIN: ' + data.message);
+                }
+            });
+            
+            channel.bind('leaderboard_updated', function(data) {
+                window.dispatchEvent(new CustomEvent('decoder:leaderboard_updated', { 
+                    detail: data
+                }));
+            });
+            
+            channel.bind('participant_joined', function(data) {
+                window.dispatchEvent(new CustomEvent('decoder:participant_joined', { 
+                    detail: data
+                }));
+            });
+            
+            channel.bind('quiz_reset', function(data) {
+                window.dispatchEvent(new CustomEvent('decoder:quiz_reset', { detail: {} }));
+                window.location.reload();
+            });
+            
+            pusher.connection.bind('state_change', function(states) {
+                if(states.current === 'unavailable' || states.current === 'disconnected') {
+                    console.log('Pusher connection lost. Trying to reconnect...');
+                } else if(states.current === 'connected') {
+                    console.log('Real-time updates connected (Pusher)');
+                }
+            });
+        }
+        
+        setTimeout(pollLiveStatus, 500);
+
+
+        // Global Countdown Timer Logic
+        document.addEventListener("DOMContentLoaded", function() {
+            const timerEl = document.getElementById("global-countdown-timer");
+            if (timerEl) {
+                const endTimeStr = timerEl.getAttribute("data-endtime");
+                if (endTimeStr && endTimeStr !== "None") {
+                    const endTime = new Date(endTimeStr).getTime();
+                    
+                    const interval = setInterval(function() {
+                        const now = new Date().getTime();
+                        const distance = endTime - now;
+                        
+                        if (distance < 0) {
+                            clearInterval(interval);
+                            timerEl.innerHTML = "00:00:00";
+                            // Optionally reload the page to get the CLOSED status
+                            setTimeout(() => window.location.reload(), 2000);
+                            return;
+                        }
+                        
+                        const hours = Math.floor(distance / (1000 * 60 * 60));
+                        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                        
+                        const fHours = String(hours).padStart(2, '0');
+                        const fMins = String(minutes).padStart(2, '0');
+                        const fSecs = String(seconds).padStart(2, '0');
+                        
+                        timerEl.innerHTML = `${fHours}h : ${fMins}m : ${fSecs}s`;
+                    }, 1000);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+Flask==3.0.3
+werkzeug==3.0.3
+firebase-admin==6.6.0
+Flask-WTF
+WTForms
+python-dotenv
+pusher
+Flask-Compress
+psycopg2-binary
