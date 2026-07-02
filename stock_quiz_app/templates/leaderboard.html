@@ -49,4 +49,16 @@
         </div>
     </div>
 </div>
+
+<script>
+    window.addEventListener('decoder:leaderboard_updated', function(e) {
+        fetch('/api/leaderboard/data')
+            .then(res => res.text())
+            .then(html => {
+                const tbody = document.getElementById('lb-body');
+                if (tbody) tbody.innerHTML = html;
+            })
+            .catch(err => console.error("Error refreshing leaderboard:", err));
+    });
+</script>
 {% endblock %}

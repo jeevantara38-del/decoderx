@@ -536,7 +536,7 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="admin-contacts-body">
                         {% if contacts %}
                             {% for c in contacts %}
                                 <tr>
@@ -601,7 +601,7 @@
                             <th>Modify Status</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="admin-transactions-body">
                         {% if transactions %}
                             {% for t in transactions %}
                                 <tr>
@@ -1423,5 +1423,30 @@
             }
         }
     });
+
+    // Real-time table updates for Admin Dashboard
+    function refreshAdminTables() {
+        fetch(window.location.href)
+            .then(res => res.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                const tableIds = ['excel-users-body', 'excel-attempts-body', 'admin-contacts-body', 'admin-transactions-body'];
+                
+                tableIds.forEach(id => {
+                    const currentBody = document.getElementById(id);
+                    const newBody = doc.getElementById(id);
+                    if (currentBody && newBody) {
+                        currentBody.innerHTML = newBody.innerHTML;
+                    }
+                });
+            })
+            .catch(err => console.error("Error refreshing admin tables:", err));
+    }
+    
+    window.addEventListener('decoder:participant_joined', refreshAdminTables);
+    window.addEventListener('decoder:leaderboard_updated', refreshAdminTables);
+    window.addEventListener('decoder:quiz_status_changed', refreshAdminTables);
 </script>
 {% endblock %}
