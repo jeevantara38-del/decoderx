@@ -409,6 +409,26 @@
             });
         }
         
+        // Robust fallback polling for quiz status
+        let lastKnownStatus = null;
+        function pollLiveStatus() {
+            fetch('/api/quiz/status')
+                .then(r => r.json())
+                .then(data => {
+                    // Only dispatch if status changed to avoid unnecessary DOM updates
+                    if (lastKnownStatus !== data.is_active) {
+                        lastKnownStatus = data.is_active;
+                        window.dispatchEvent(new CustomEvent('decoder:quiz_status_changed', { 
+                            detail: { is_active: data.is_active }
+                        }));
+                    }
+                })
+                .catch(err => console.debug("Polling error:", err))
+                .finally(() => {
+                    setTimeout(pollLiveStatus, 5000); // Check every 5 seconds
+                });
+        }
+        
         setTimeout(pollLiveStatus, 500);
 
 
