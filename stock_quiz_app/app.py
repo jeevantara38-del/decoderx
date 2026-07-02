@@ -1187,10 +1187,6 @@ def profile_page():
     cursor.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],))
     user_info = cursor.fetchone()
     
-    if not user_info:
-        session.clear()
-        return redirect(url_for("login"))
-    
     cursor.execute("""
         SELECT * FROM quiz_attempts
         WHERE user_id = ?
