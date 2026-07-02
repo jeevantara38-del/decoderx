@@ -565,6 +565,7 @@ def register():
             session["fullname"] = user["fullname"]
             session["phone"] = user["phone"]
             session["role"] = user["role"]
+            session["is_first_login"] = True
             flash(f"Account created! Welcome, {user['fullname']}!", "success")
             return redirect(url_for("dashboard"))
         except IntegrityError:
@@ -737,6 +738,8 @@ def api_auth_phone():
     session["fullname"] = user["fullname"]
     session["phone"] = user["phone"]
     session["role"] = user["role"]
+    if action == "register":
+        session["is_first_login"] = True
     
     if user["role"] == "admin":
         session["admin"] = True
@@ -802,6 +805,7 @@ def google_callback():
     # Check if user exists by google_id or email
     cursor.execute("SELECT * FROM users WHERE google_id = ? OR email = ?", (google_id, email))
     user = cursor.fetchone()
+    user_existed = bool(user)
     
     if not user:
         # Create new user
@@ -833,6 +837,8 @@ def google_callback():
     session["fullname"] = user["fullname"]
     session["phone"] = user["phone"]
     session["role"] = user["role"]
+    if not user_existed:
+        session["is_first_login"] = True
     session["profile_image"] = profile_image
     
     if user["role"] == "admin":
@@ -1019,6 +1025,8 @@ def api_auth_google():
     session["fullname"] = user["fullname"]
     session["phone"] = user["phone"]
     session["role"] = user["role"]
+    if not user_existed:
+        session["is_first_login"] = True
     
     if user["role"] == "admin":
         session["admin"] = True
@@ -1113,6 +1121,8 @@ def dashboard():
             needs_claim = True
             pending_reward = {"id": pending_tx["id"], "amount": pending_tx["amount"]}
     
+    is_first_login = session.pop("is_first_login", False)
+    
     return render_template(
         "dashboard.html",
         user=user_info,
@@ -1123,7 +1133,8 @@ def dashboard():
         transactions=transactions,
         total_earnings=total_earnings,
         needs_claim=needs_claim,
-        pending_reward=pending_reward
+        pending_reward=pending_reward,
+        is_first_login=is_first_login
     )
 
 @app.route("/leaderboard")

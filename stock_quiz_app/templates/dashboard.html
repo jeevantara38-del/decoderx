@@ -459,17 +459,17 @@
     });
 </script>
 
-{% if not user.fullname or user.fullname.strip() == '' or user.fullname == 'Google User' %}
+{% if is_first_login or not user.fullname or user.fullname.strip() == '' or user.fullname == 'Google User' or user.fullname == 'New User' %}
 <!-- Name Capture Modal -->
 <div class="overlay" id="name-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(7, 16, 31, 0.95); z-index: 9999; padding: 20px;">
     <div class="glass" style="max-width: 400px; width: 100%; text-align: center; border-color: var(--border-teal); box-shadow: 0 0 35px rgba(0,255,170,0.2); padding: 40px 30px; position: relative;">
         <h2 style="font-family: 'Outfit'; font-size: 1.8rem; margin-bottom: 10px; color: var(--text-primary);">Welcome!</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 25px; font-size: 0.95rem;">Please enter your name to continue. This name will appear on the leaderboard.</p>
+        <p style="color: var(--text-secondary); margin-bottom: 25px; font-size: 0.95rem;">Please confirm your name to continue. This name will appear on the leaderboard.</p>
         
         <form id="name-capture-form" onsubmit="submitName(event)">
             <div class="form-group-clean" style="text-align: left; margin-bottom: 20px;">
                 <label for="capture_fullname" style="display: block; margin-bottom: 8px; color: var(--teal); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">Your Name</label>
-                <input type="text" id="capture_fullname" name="fullname" required placeholder="Enter your full name" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-teal); background: rgba(0, 255, 170, 0.05); color: white; font-family: 'Inter'; font-size: 1rem; outline: none;">
+                <input type="text" id="capture_fullname" name="fullname" required placeholder="Enter your full name" value="{% if user.fullname and user.fullname not in ['Google User', 'New User'] %}{{ user.fullname }}{% endif %}" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-teal); background: rgba(0, 255, 170, 0.05); color: white; font-family: 'Inter'; font-size: 1rem; outline: none;">
             </div>
             <button type="submit" class="btn-primary" style="width: 100%; padding: 14px; font-size: 1rem; letter-spacing: 0.5px;">Save & Continue</button>
             <div id="name-error" style="color: #ff4d6d; margin-top: 15px; font-size: 0.85rem; display: none;"></div>
