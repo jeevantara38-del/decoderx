@@ -40,9 +40,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (quizActive) {
             history.pushState(null, document.title, location.href);
             backAttempts++;
-            if (backAttempts >= 3) {
-                showToast("Multiple attempts to leave detected. Auto-submitting quiz.", "error");
-                submitQuiz();
+            violationCounts['back'] = (violationCounts['back'] || 0) + 1;
+            warningsCount++;
+            if (backAttempts >= 3 || warningsCount >= 3) {
+                showDisqualificationModal("Auto Submitted", "You pressed the browser Back button multiple times.");
+                submitQuiz(true);
             } else {
                 showToast("Leaving the quiz is not allowed.", "error");
             }
@@ -55,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Prevent F5, Ctrl+R, Cmd+R
             if (e.key === "F5" || (e.ctrlKey && e.key.toLowerCase() === "r") || (e.metaKey && e.key.toLowerCase() === "r")) {
                 e.preventDefault();
-                showToast("Refresh is disabled during the quiz.", "error");
+                triggerWarning("refresh");
                 return;
             }
             
@@ -167,6 +169,102 @@ document.addEventListener("DOMContentLoaded", () => {
     let warningsCount = 0;
     let lastWarningTime = 0;
 
+    let violationCounts = {
+        fullscreen: 0,
+        tab_switch: 0,
+        blur: 0,
+        screenshot: 0,
+        devtools: 0,
+        shortcut: 0,
+        right_click: 0,
+        copy: 0,
+        cut: 0,
+        refresh: 0,
+        back: 0
+    };
+
+    const VIOLATION_MESSAGES = {
+        fullscreen: "You exited fullscreen mode",
+        tab_switch: "You switched browser tabs",
+        blur: "You lost window focus",
+        screenshot: "You attempted to take a screenshot",
+        devtools: "You opened Developer Tools (F12/Inspect)",
+        shortcut: "You used a restricted keyboard shortcut",
+        right_click: "You attempted to right-click",
+        copy: "You attempted to copy text",
+        cut: "You attempted to cut text",
+        refresh: "You attempted to refresh the page",
+        back: "You pressed the browser Back button"
+    };
+
+    function showDisqualificationModal(status = "Auto Submitted", immediateReason = null) {
+        document.getElementById("quiz-container").style.display = "none";
+        
+        let reasonHtml = "";
+        let multiple = false;
+        
+        if (immediateReason) {
+            reasonHtml += `<li>${immediateReason}</li>`;
+        } else {
+            let activeViolations = [];
+            for (const [key, count] of Object.entries(violationCounts)) {
+                if (count > 0) {
+                    activeViolations.push(`<li>${VIOLATION_MESSAGES[key]} ${count} time(s).</li>`);
+                }
+            }
+            if (activeViolations.length > 1) {
+                reasonHtml += `<li>Multiple suspicious activities were detected.</li>`;
+            }
+            reasonHtml += activeViolations.join("");
+        }
+
+        const modal = document.createElement("div");
+        modal.style.position = "fixed";
+        modal.style.top = "0";
+        modal.style.left = "0";
+        modal.style.width = "100vw";
+        modal.style.height = "100vh";
+        modal.style.background = "rgba(0,0,0,0.85)";
+        modal.style.backdropFilter = "blur(5px)";
+        modal.style.zIndex = "10000";
+        modal.style.display = "flex";
+        modal.style.justifyContent = "center";
+        modal.style.alignItems = "center";
+        modal.style.padding = "20px";
+        
+        const timeStr = new Date().toLocaleTimeString();
+        
+        modal.innerHTML = `
+            <div class="glass auth-card" style="max-width: 500px; width: 100%; padding: 30px; border: 1px solid rgba(255, 77, 109, 0.3); text-align: left;">
+                <h2 style="color: #ff4d6d; margin-bottom: 20px; text-align: center; font-size: 1.8rem; font-family: 'Outfit', sans-serif;">Quiz ${status}</h2>
+                
+                <p style="color: var(--text-secondary); margin-bottom: 10px;"><strong>Status:</strong> <span style="color: #ff4d6d;">${status}</span></p>
+                <p style="color: var(--text-secondary); margin-bottom: 10px;"><strong>Warnings Received:</strong> ${warningsCount}</p>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;"><strong>Time of Violation:</strong> ${timeStr}</p>
+                
+                <h3 style="color: white; margin-bottom: 10px; font-size: 1.2rem;">Reason:</h3>
+                <ul style="color: #ff4d6d; line-height: 1.6; margin-bottom: 30px; padding-left: 20px;">
+                    ${reasonHtml}
+                </ul>
+                
+                <div style="text-align: center;">
+                    <p style="color: var(--text-secondary); margin-bottom: 15px;" id="dq-status-text">Submitting your results...</p>
+                    <button id="dq-continue-btn" class="btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem; opacity: 0.5; cursor: not-allowed;" disabled>Please wait</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        window.dqContinueBtn = document.getElementById("dq-continue-btn");
+        window.dqStatusText = document.getElementById("dq-status-text");
+        
+        window.dqContinueBtn.addEventListener("click", () => {
+            if (window.dqRedirectUrl) {
+                window.location.href = window.dqRedirectUrl;
+            }
+        });
+    }
+
+
     function triggerWarning(message) {
         if (!quizActive) return;
         
@@ -190,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function handleFullscreenChange() {
         const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
         if (quizActive && !isFullscreen) {
-            triggerWarning("You must remain in fullscreen.");
+            triggerWarning("fullscreen");
         }
     }
     
@@ -201,19 +299,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // TAB SWITCH / BLUR DETECTION
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === 'hidden') {
-            triggerWarning("Tab switching or minimizing the app is not allowed.");
+            triggerWarning("tab_switch");
         }
     });
 
     window.addEventListener("blur", () => {
-        triggerWarning("Window lost focus. Do not switch applications.");
+        triggerWarning("blur");
     });
 
     // SCREENSHOT DETERRENCE (PrintScreen Key)
     document.addEventListener("keyup", function(e) {
         if (quizActive && e.key === "PrintScreen") {
             e.preventDefault();
-            triggerWarning("Screenshots are prohibited.");
+            triggerWarning("screenshot");
             
             // Clear clipboard to deter pasting screenshots
             if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -563,14 +661,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function submitQuiz() {
+    async function submitQuiz(isDisqualified = false) {
         if (!quizActive) return;
         quizActive = false;
         clearInterval(timerInterval);
         if (pollInterval) clearInterval(pollInterval);
 
-        nextBtn.disabled = true;
-        nextBtn.textContent = "Submitting answers...";
+        if (!isDisqualified) {
+            nextBtn.disabled = true;
+            nextBtn.textContent = "Submitting answers...";
+        }
 
         // Send total cumulative time taken for all questions
         const timeTaken = Math.max(1, totalTimeTaken);
@@ -616,9 +716,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.addEventListener('decoder:quiz_status_changed', function(e) {
         if (!e.detail.is_active && quizActive) {
-            quizActive = false;
-            showToast('Quiz has been CLOSED by admin! Submitting current progress...', 'error');
-            setTimeout(submitQuiz, 1500);
+            showDisqualificationModal("Auto Submitted", "The quiz has been CLOSED by the admin. Submitting your current progress.");
+            setTimeout(() => submitQuiz(true), 1500);
         }
     });
 
