@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
             warningsCount++;
             if (backAttempts >= 3 || warningsCount >= 3) {
                 showDisqualificationModal("Auto Submitted", "You pressed the browser Back button multiple times.");
-                submitQuiz(true);
+                submitQuiz(true, "You pressed the browser Back button multiple times.");
             } else {
                 showToast("Leaving the quiz is not allowed.", "error");
             }
@@ -280,7 +280,8 @@ document.addEventListener("DOMContentLoaded", () => {
             showToast(`Warning 2: ${message} (Final Warning)`, "error");
         } else if (warningsCount >= 3) {
             showToast("Multiple violations detected. Auto-submitting quiz.", "error");
-            submitQuiz();
+            showDisqualificationModal("Auto Submitted", "Multiple violations detected.");
+            submitQuiz(true, "Multiple violations detected.");
         }
     }
 
@@ -436,12 +437,16 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    function advanceQuestion() {
+    function advanceQuestion(isTimeExpired = false) {
         const timeSpentOnThis = Math.max(1, 30 - timeRemaining);
         totalTimeTaken += timeSpentOnThis;
 
         if (currentQuestionIndex === questions.length - 1) {
-            submitQuiz();
+            if (isTimeExpired) {
+                submitQuiz(false, "Time limit reached for the final question.");
+            } else {
+                submitQuiz();
+            }
         } else {
             loadQuestion(currentQuestionIndex + 1);
         }
@@ -543,7 +548,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = await res.json();
                 if (!data.is_active) {
                     showToast("The quiz has been closed by the admin. Submitting your current progress.", "error");
-                    submitQuiz();
+                    submitQuiz(false, "The quiz was closed by the admin.");
                 }
             } catch (e) {
                 console.warn("Status poll failed", e);
@@ -643,7 +648,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     selectedAnswers[q.id] = -1; // -1 means skipped
                 }
                 
-                advanceQuestion();
+                advanceQuestion(true);
             }
         }, 1000);
     }
@@ -661,7 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function submitQuiz(isDisqualified = false) {
+    async function submitQuiz(isDisqualified = false, reason = "") {
         if (!quizActive) return;
         quizActive = false;
         clearInterval(timerInterval);
@@ -696,9 +701,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await response.json();
 
             if (data.success) {
+                const reasonParam = reason ? `&reason=${encodeURIComponent(reason)}` : "";
                 const redir = data.needs_phone 
-                    ? `/reward_verification?score=${data.score}&total=${data.total}&time=${data.time_taken}`
-                    : `/dashboard?submitted=true&score=${data.score}&total=${data.total}&time=${data.time_taken}`;
+                    ? `/reward_verification?score=${data.score}&total=${data.total}&time=${data.time_taken}${reasonParam}`
+                    : `/dashboard?submitted=true&score=${data.score}&total=${data.total}&time=${data.time_taken}${reasonParam}`;
                 
                 if (isDisqualified && window.dqContinueBtn) {
                     window.dqRedirectUrl = redir;

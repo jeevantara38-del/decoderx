@@ -98,8 +98,16 @@
 {% if request.args.get('submitted') == 'true' %}
 <div class="overlay" id="results-modal" style="display: flex; align-items: center; justify-content: center; position: fixed; inset: 0; background: rgba(7, 16, 31, 0.85); z-index: 1000; padding: 20px;">
     <div class="glass" style="max-width: 400px; width: 100%; text-align: center; border-color: var(--border-teal); box-shadow: 0 0 25px var(--teal-dim); padding: 30px;">
-        <h2 style="color: var(--teal); font-size: 2.2rem; font-family: 'Outfit'; margin-bottom: 8px;">Quiz Completed!</h2>
-        <p style="color: var(--text-sub); font-size: 0.95rem; margin-bottom: 20px;">Your responses have been processed.</p>
+        <h2 style="color: var(--teal); font-size: 2.2rem; font-family: 'Outfit'; margin-bottom: 8px;">
+            {% if request.args.get('reason') %}Auto Submitted{% else %}Quiz Completed!{% endif %}
+        </h2>
+        <p style="color: var(--text-sub); font-size: 0.95rem; margin-bottom: 20px;">
+            {% if request.args.get('reason') %}
+                <span style="color: #ff4d6d;">{{ request.args.get('reason') }}</span>
+            {% else %}
+                Your responses have been processed.
+            {% endif %}
+        </p>
         
         <div style="margin: 20px 0; background: var(--input-bg); border: 1px solid var(--border); padding: 20px; border-radius: 16px;">
             <div style="display: flex; justify-content: space-around;">

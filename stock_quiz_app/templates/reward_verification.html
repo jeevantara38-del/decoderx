@@ -15,10 +15,14 @@
         </div>
         
         <h2 style="color: var(--teal); font-size: 1.9rem; font-family: 'Outfit'; margin-bottom: 6px; position: relative;">
-            Congratulations!
+            {% if request.args.get('reason') %}Auto Submitted{% else %}Congratulations!{% endif %}
         </h2>
         <p style="color: var(--text-sub); font-size: 0.95rem; margin-bottom: 22px;">
-            You have successfully completed the quiz.
+            {% if request.args.get('reason') %}
+                <span style="color: #ff4d6d;">{{ request.args.get('reason') }}</span>
+            {% else %}
+                You have successfully completed the quiz.
+            {% endif %}
         </p>
         
         <p style="color: var(--text-sub); font-size: 0.88rem; margin-bottom: 22px; line-height: 1.6;">
