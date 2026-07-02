@@ -1842,6 +1842,9 @@ def api_admin_reset_quiz(user_id):
     cursor.execute("DELETE FROM quiz_progress WHERE user_id = ?", (user_id,))
     cursor.execute("DELETE FROM quiz_attempts WHERE user_id = ?", (user_id,))
     db.commit()
+    
+    trigger_pusher_event('decoder-channel', 'user_quiz_reset', {'user_id': user_id})
+    
     return jsonify({"success": True, "message": "Quiz reset successfully. The user can now retake the quiz."})
 
 

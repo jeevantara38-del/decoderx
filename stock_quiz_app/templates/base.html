@@ -393,6 +393,13 @@
                 window.location.reload();
             });
             
+            channel.bind('user_quiz_reset', function(data) {
+                const currentUserId = {{ session.get('user_id') | default('null', true) }};
+                if (currentUserId && data.user_id === currentUserId) {
+                    window.location.href = '/dashboard';
+                }
+            });
+            
             pusher.connection.bind('state_change', function(states) {
                 if(states.current === 'unavailable' || states.current === 'disconnected') {
                     console.log('Pusher connection lost. Trying to reconnect...');
