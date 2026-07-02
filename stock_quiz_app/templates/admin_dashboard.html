@@ -1370,5 +1370,58 @@
         const checkboxes = document.querySelectorAll('.question-checkbox');
         checkboxes.forEach(cb => cb.checked = source.checked);
     }
+
+    // Global Quiz Countdown Timer Logic
+    document.addEventListener("DOMContentLoaded", function() {
+        const timerElement = document.getElementById("global-countdown-timer");
+        if (timerElement) {
+            const endTimeStr = timerElement.getAttribute("data-endtime");
+            if (endTimeStr && endTimeStr !== "None") {
+                // Ensure correct parsing of ISO string. Vercel uses UTC for datetime.now().
+                // Append 'Z' to treat the naive server timestamp as UTC in the browser.
+                let properEndTimeStr = endTimeStr;
+                if (!properEndTimeStr.endsWith("Z") && !properEndTimeStr.includes("+")) {
+                    properEndTimeStr += "Z";
+                }
+                const endTime = new Date(properEndTimeStr).getTime();
+                
+                const timerInterval = setInterval(function() {
+                    const now = new Date().getTime();
+                    const distance = endTime - now;
+                    
+                    if (distance < 0) {
+                        clearInterval(timerInterval);
+                        timerElement.innerHTML = "EXPIRED";
+                        timerElement.style.color = "#ff4d6d";
+                        // Optionally refresh the page after a few seconds
+                        setTimeout(() => window.location.reload(), 3000);
+                        return;
+                    }
+                    
+                    // Time calculations for days, hours, minutes and seconds
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                    
+                    // Format with leading zeros
+                    const h = hours.toString().padStart(2, '0');
+                    const m = minutes.toString().padStart(2, '0');
+                    const s = seconds.toString().padStart(2, '0');
+                    
+                    if (days > 0) {
+                        timerElement.innerHTML = `${days}d ${h}:${m}:${s}`;
+                    } else {
+                        timerElement.innerHTML = `${h}:${m}:${s}`;
+                    }
+                    
+                    // Change color to warning if less than 5 minutes
+                    if (days === 0 && hours === 0 && minutes < 5) {
+                        timerElement.style.color = "#ff9e00";
+                    }
+                }, 1000);
+            }
+        }
+    });
 </script>
 {% endblock %}
