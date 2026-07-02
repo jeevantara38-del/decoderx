@@ -132,9 +132,11 @@
                                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                                 </svg>
                             </div>
+                            {# Profile currently not working
                             <a href="{{ url_for('profile_page') }}" class="avatar" title="Profile" {% if session.get('profile_image') %}style="background-image: url('{{ session.get('profile_image') }}'); background-size: cover; color: transparent;"{% endif %}>
                                 {% if session.get('role') == 'admin' %}A{% else %}{{ session.get('fullname')[0]|upper }}{% endif %}
                             </a>
+                            #}
                         {% elif session.get('admin') %}
                             <a href="{{ url_for('admin_dashboard') }}" class="btn-cyber secondary" style="padding: 6px 10px; font-size: 0.75rem; width: auto; border-radius: 8px; box-shadow: none;">Admin</a>
                             <a href="{{ url_for('logout') }}" class="btn-cyber danger" style="padding: 6px 10px; font-size: 0.75rem; width: auto; border-radius: 8px; box-shadow: none;">Logout</a>
@@ -201,6 +203,7 @@
                         <div class="tab-lbl">Rewards</div>
                         <div class="tab-dot"></div>
                     </a>
+                    {# Profile currently not working
                     <a href="{{ url_for('profile_page') }}" class="tab-item {% if request.endpoint == 'profile_page' %}act{% endif %}">
                         <div class="tab-icon">
                             <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -211,6 +214,7 @@
                         <div class="tab-lbl">Profile</div>
                         <div class="tab-dot"></div>
                     </a>
+                    #}
                 </div>
                 {% endif %}
 
