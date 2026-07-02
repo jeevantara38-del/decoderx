@@ -410,12 +410,16 @@ def init_db():
         
         def add_col_if_missing(table, col, col_def):
             try:
+                if is_pg:
+                    db.commit() # Commit previous pending statements
                 cursor.execute(f"SELECT {col} FROM {table} LIMIT 1")
             except Exception:
                 if is_pg:
                     db.rollback()
                 try:
                     cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}")
+                    if is_pg:
+                        db.commit() # Commit this column addition
                 except Exception as e:
                     if is_pg:
                         db.rollback()
