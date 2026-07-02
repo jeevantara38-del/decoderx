@@ -451,11 +451,17 @@
             .then(html => {
                 const tbody = document.getElementById('dashboard-lb-body');
                 if (tbody) tbody.innerHTML = html;
+                if (typeof showToast === 'function' && e.detail && e.detail.user) {
+                    showToast('🏆 ' + e.detail.user + ' scored ' + e.detail.score + ' pts!', 'success');
+                }
             });
     });
 
     window.addEventListener('decoder:participant_joined', function(e) {
         console.log("Participant joined:", e.detail.user);
+        if (typeof showToast === 'function' && e.detail && e.detail.user) {
+            showToast('🎯 ' + e.detail.user + ' joined the quiz!', 'success');
+        }
     });
 </script>
 

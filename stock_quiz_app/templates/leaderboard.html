@@ -52,6 +52,9 @@
 
 <script>
     window.addEventListener('decoder:leaderboard_updated', function(e) {
+        if (typeof showToast === 'function' && e.detail && e.detail.user) {
+            showToast('🏆 ' + e.detail.user + ' scored ' + e.detail.score + ' pts!', 'success');
+        }
         fetch('/api/leaderboard/data')
             .then(res => res.text())
             .then(html => {
@@ -59,6 +62,12 @@
                 if (tbody) tbody.innerHTML = html;
             })
             .catch(err => console.error("Error refreshing leaderboard:", err));
+    });
+
+    window.addEventListener('decoder:participant_joined', function(e) {
+        if (typeof showToast === 'function' && e.detail && e.detail.user) {
+            showToast('🎯 ' + e.detail.user + ' joined the quiz!', 'success');
+        }
     });
 </script>
 {% endblock %}
