@@ -394,8 +394,8 @@
             });
             
             channel.bind('user_quiz_reset', function(data) {
-                const currentUserId = {{ session.get('user_id') | default('null', true) }};
-                if (currentUserId && data.user_id === currentUserId) {
+                const currentUserIdStr = "{{ session.get('user_id') | default('', true) }}";
+                if (currentUserIdStr && data.user_id == currentUserIdStr) {
                     window.location.href = '/dashboard';
                 }
             });
