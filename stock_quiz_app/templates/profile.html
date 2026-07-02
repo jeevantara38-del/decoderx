@@ -47,7 +47,7 @@
                         {% for att in attempts %}
                             <tr>
                                 <td style="font-size: 0.8rem; color: var(--text-sub);">
-                                    {{ att.submitted_at[:16] }}
+                                    {{ (att.submitted_at|string)[:16] }}
                                 </td>
                                 <td style="font-weight: 600; color: var(--teal);">
                                     {{ att.score }} pts
