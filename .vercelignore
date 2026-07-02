@@ -1,5 +1,4 @@
-# Database and logs
-*.db  
+# Logs
 *.log  
 
 # Environment and sensitive keys

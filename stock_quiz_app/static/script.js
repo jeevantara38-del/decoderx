@@ -1,5 +1,26 @@
 // Simplified Quiz Controller — Global Timer Model
 document.addEventListener("DOMContentLoaded", () => {
+    
+    // Global showToast fallback if not defined in HTML
+    if (typeof window.showToast !== 'function') {
+        window.showToast = function(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast-notification toast-${type}`;
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <span class="toast-icon">${type === 'success' ? '✓' : '✕'}</span>
+                    <span class="toast-message">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideDown 0.3s ease-out reverse forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        };
+    }
+
     const quizContent = document.getElementById("quiz-content");
     if (!quizContent) return;
 
