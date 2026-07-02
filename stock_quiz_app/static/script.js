@@ -696,21 +696,48 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await response.json();
 
             if (data.success) {
-                if (data.needs_phone) {
-                    window.location.href = `/reward_verification?score=${data.score}&total=${data.total}&time=${data.time_taken}`;
+                const redir = data.needs_phone 
+                    ? `/reward_verification?score=${data.score}&total=${data.total}&time=${data.time_taken}`
+                    : `/dashboard?submitted=true&score=${data.score}&total=${data.total}&time=${data.time_taken}`;
+                
+                if (isDisqualified && window.dqContinueBtn) {
+                    window.dqRedirectUrl = redir;
+                    window.dqContinueBtn.disabled = false;
+                    window.dqContinueBtn.style.opacity = "1";
+                    window.dqContinueBtn.style.cursor = "pointer";
+                    window.dqContinueBtn.textContent = "Continue to Results";
+                    window.dqStatusText.textContent = "Results submitted successfully.";
                 } else {
-                    window.location.href = `/dashboard?submitted=true&score=${data.score}&total=${data.total}&time=${data.time_taken}`;
+                    window.location.href = redir;
                 }
             } else {
-                showToast(data.message || "Failed to submit answers.", "error");
-                window.location.href = "/dashboard";
+                if (isDisqualified && window.dqContinueBtn) {
+                    window.dqStatusText.textContent = "Submission failed: " + (data.message || "Error");
+                    window.dqContinueBtn.disabled = false;
+                    window.dqContinueBtn.style.opacity = "1";
+                    window.dqContinueBtn.style.cursor = "pointer";
+                    window.dqContinueBtn.textContent = "Return to Dashboard";
+                    window.dqRedirectUrl = "/dashboard";
+                } else {
+                    showToast(data.message || "Failed to submit answers.", "error");
+                    window.location.href = "/dashboard";
+                }
             }
         } catch (err) {
             console.error("Submission failed:", err);
-            showToast("Submission failed. Please check your connection and try again.", "error");
-            nextBtn.disabled = false;
-            nextBtn.textContent = "Submit Quiz";
-            quizActive = true;
+            if (isDisqualified && window.dqContinueBtn) {
+                window.dqStatusText.textContent = "Network error. Failed to submit.";
+                window.dqContinueBtn.disabled = false;
+                window.dqContinueBtn.style.opacity = "1";
+                window.dqContinueBtn.style.cursor = "pointer";
+                window.dqContinueBtn.textContent = "Return to Dashboard";
+                window.dqRedirectUrl = "/dashboard";
+            } else {
+                showToast("Submission failed. Please check your connection and try again.", "error");
+                nextBtn.disabled = false;
+                nextBtn.textContent = "Submit Quiz";
+                quizActive = true;
+            }
         }
     }
 

@@ -13,10 +13,10 @@
         {% else %}
         <div class="avatar" style="width: 60px; height: 60px; font-size: 1.5rem;">
         {% endif %}
-            {% if user.role == 'admin' %}A{% else %}{{ user.fullname[0]|upper }}{% endif %}
+            {% if user.role == 'admin' %}A{% else %}{{ (user.fullname or 'U')[0]|upper }}{% endif %}
         </div>
         <div>
-            <h3 style="color: var(--text); font-family: 'Outfit'; margin-bottom: 4px; font-size: 1.2rem;">{{ user.fullname }}</h3>
+            <h3 style="color: var(--text); font-family: 'Outfit'; margin-bottom: 4px; font-size: 1.2rem;">{{ user.fullname or 'User' }}</h3>
             <p style="color: var(--text-sub); font-size: 0.9rem;">{{ user.email }}</p>
             <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">Phone: {{ user.phone_number or 'Not provided' }}</p>
         </div>

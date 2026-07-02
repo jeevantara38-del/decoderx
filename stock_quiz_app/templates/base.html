@@ -133,7 +133,7 @@
                                 </svg>
                             </div>
                             <a href="{{ url_for('profile_page') }}" class="avatar" title="Profile" {% if session.get('profile_image') %}style="background-image: url('{{ session.get('profile_image') }}'); background-size: cover; color: transparent;"{% endif %}>
-                                {% if session.get('role') == 'admin' %}A{% else %}{{ session.get('fullname')[0]|upper }}{% endif %}
+                                {% if session.get('role') == 'admin' %}A{% else %}{{ (session.get('fullname') or 'U')[0]|upper }}{% endif %}
                             </a>
                         {% elif session.get('admin') %}
                             <a href="{{ url_for('admin_dashboard') }}" class="btn-cyber secondary" style="padding: 6px 10px; font-size: 0.75rem; width: auto; border-radius: 8px; box-shadow: none;">Admin</a>
