@@ -402,16 +402,28 @@ def init_db():
             time_taken INTEGER NOT NULL,
             warnings_count INTEGER DEFAULT 0,
             submitted_at {ts_type} DEFAULT CURRENT_TIMESTAMP,
+            is_disqualified INTEGER DEFAULT 0,
+            disqualification_reason TEXT,
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
         """)
         
         # Ensure migration: Add warnings_count to quiz_attempts if it doesn't exist
         try:
-            cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN warnings_count INTEGER DEFAULT 0")
+            cursor.execute("SELECT warnings_count FROM quiz_attempts LIMIT 1")
         except sqlite3.OperationalError:
-            pass # Column already exists
-        
+            cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN warnings_count INTEGER DEFAULT 0")
+            
+        try:
+            cursor.execute("SELECT is_disqualified FROM quiz_attempts LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN is_disqualified INTEGER DEFAULT 0")
+            
+        try:
+            cursor.execute("SELECT disqualification_reason FROM quiz_attempts LIMIT 1")
+        except sqlite3.OperationalError:
+            cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN disqualification_reason TEXT")
+            
         # Create transactions table
         cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS transactions (
@@ -1059,7 +1071,7 @@ def dashboard():
         SELECT u.id as user_id, u.fullname, u.phone_number, MAX(qa.score) as top_score, MIN(qa.time_taken) as best_time, MIN(qa.submitted_at) as submitted_at
         FROM quiz_attempts qa
         JOIN users u ON qa.user_id = u.id
-        WHERE u.role != 'admin'
+        WHERE u.role != 'admin' AND qa.is_disqualified = 0
         GROUP BY u.id, u.fullname, u.phone
         ORDER BY top_score DESC, best_time ASC, submitted_at ASC
         LIMIT 10
@@ -1118,7 +1130,7 @@ def leaderboard_page():
         SELECT u.id as user_id, u.fullname, u.phone_number, MAX(qa.score) as top_score, MIN(qa.time_taken) as best_time, MIN(qa.submitted_at) as submitted_at
         FROM quiz_attempts qa
         JOIN users u ON qa.user_id = u.id
-        WHERE u.role != 'admin'
+        WHERE u.role != 'admin' AND qa.is_disqualified = 0
         GROUP BY u.id, u.fullname, u.phone
         ORDER BY top_score DESC, best_time ASC, submitted_at ASC
         LIMIT 25
@@ -1135,7 +1147,7 @@ def api_leaderboard_data():
         SELECT u.id as user_id, u.fullname, u.profile_image, MAX(qa.score) as top_score, MIN(qa.time_taken) as best_time, MIN(qa.submitted_at) as submitted_at
         FROM quiz_attempts qa
         JOIN users u ON qa.user_id = u.id
-        WHERE u.role != 'admin'
+        WHERE u.role != 'admin' AND qa.is_disqualified = 0
         GROUP BY u.id, u.fullname, u.phone_number
         ORDER BY top_score DESC, best_time ASC, submitted_at ASC
         LIMIT 25
@@ -1152,7 +1164,7 @@ def api_leaderboard_data_dashboard():
         SELECT u.id as user_id, u.fullname, u.profile_image, MAX(qa.score) as top_score, MIN(qa.time_taken) as best_time, MIN(qa.submitted_at) as submitted_at
         FROM quiz_attempts qa
         JOIN users u ON qa.user_id = u.id
-        WHERE u.role != 'admin'
+        WHERE u.role != 'admin' AND qa.is_disqualified = 0
         GROUP BY u.id, u.fullname, u.phone_number
         ORDER BY top_score DESC, best_time ASC, submitted_at ASC
         LIMIT 10
@@ -1581,11 +1593,14 @@ def api_submit_quiz():
         warnings_count = int(warnings_count)
     except ValueError:
         warnings_count = 0
+        
+    is_disqualified = 1 if request.json.get("is_disqualified") else 0
+    disqualification_reason = request.json.get("disqualification_reason", None)
 
     # Insert attempt
     cursor.execute(
-        "INSERT INTO quiz_attempts (user_id, score, time_taken, warnings_count) VALUES (?, ?, ?, ?)",
-        (session["user_id"], score, time_taken, warnings_count)
+        "INSERT INTO quiz_attempts (user_id, score, time_taken, warnings_count, is_disqualified, disqualification_reason) VALUES (?, ?, ?, ?, ?, ?)",
+        (session["user_id"], score, time_taken, warnings_count, is_disqualified, disqualification_reason)
     )
     
     # Mark progress as completed
@@ -1892,7 +1907,7 @@ def admin_dashboard():
     
     # Fetch scores/attempts sorted by best performers (leaderboard format, Limit 1000)
     cursor.execute("""
-        SELECT qa.id as attempt_id, u.id as user_id, u.fullname, u.phone_number, u.role as role, qa.score, qa.time_taken, qa.warnings_count, qa.submitted_at
+        SELECT qa.id as attempt_id, u.id as user_id, u.fullname, u.phone_number, u.role as role, qa.score, qa.time_taken, qa.warnings_count, qa.submitted_at, qa.is_disqualified, qa.disqualification_reason
         FROM quiz_attempts qa
         JOIN users u ON qa.user_id = u.id
         ORDER BY qa.score DESC, qa.time_taken ASC, qa.submitted_at ASC
@@ -1917,7 +1932,7 @@ def admin_dashboard():
                qa.score, qa.time_taken, qa.submitted_at
         FROM quiz_attempts qa
         JOIN users u ON qa.user_id = u.id
-        WHERE u.role != 'admin'
+        WHERE u.role != 'admin' AND qa.is_disqualified = 0
         ORDER BY qa.score DESC, qa.time_taken ASC, qa.submitted_at ASC
         LIMIT 2000
     """)
@@ -2020,7 +2035,7 @@ def admin_export_contacts_csv():
                qa.score, qa.time_taken, qa.submitted_at
         FROM quiz_attempts qa
         JOIN users u ON qa.user_id = u.id
-        WHERE u.role != 'admin'
+        WHERE u.role != 'admin' AND qa.is_disqualified = 0
         ORDER BY qa.score DESC, qa.time_taken ASC, qa.submitted_at ASC
     """)
     rows = cursor.fetchall()

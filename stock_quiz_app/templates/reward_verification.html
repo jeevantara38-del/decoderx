@@ -14,17 +14,28 @@
             🏆
         </div>
         
-        <h2 style="color: var(--teal); font-size: 1.9rem; font-family: 'Outfit'; margin-bottom: 6px; position: relative;">
-            {% if request.args.get('reason') %}Auto Submitted{% else %}Congratulations!{% endif %}
+        <h2 style="color: {% if request.args.get('dq') == '1' %}#ff4d6d{% else %}var(--teal){% endif %}; font-size: 1.9rem; font-family: 'Outfit'; margin-bottom: 6px; position: relative;">
+            {% if request.args.get('dq') == '1' %}Not Eligible for Ranking or Rewards{% elif request.args.get('reason') %}Auto Submitted{% else %}Congratulations!{% endif %}
         </h2>
         <p style="color: var(--text-sub); font-size: 0.95rem; margin-bottom: 22px;">
-            {% if request.args.get('reason') %}
+            {% if request.args.get('dq') == '1' %}
+                <span style="color: #ff4d6d;"><b>Reason:</b> {{ request.args.get('reason') }}</span><br>
+                <span style="color: #ff4d6d; font-size: 0.85rem;">Total Warnings: {{ request.args.get('warnings', 0) }}</span>
+            {% elif request.args.get('reason') %}
                 <span style="color: #ff4d6d;">{{ request.args.get('reason') }}</span>
             {% else %}
                 You have successfully completed the quiz.
             {% endif %}
         </p>
         
+        {% if request.args.get('dq') == '1' %}
+        <p style="color: #ff4d6d; font-size: 0.95rem; margin-bottom: 22px; font-weight: bold;">
+            Due to rule violations, you are not eligible for any rewards.
+        </p>
+        <button onclick="window.location.href='/dashboard';" class="btn-primary" style="width: 100%; padding: 16px; font-size: 1rem; font-weight: 700; letter-spacing: 0.5px;">
+            Return to Dashboard
+        </button>
+        {% else %}
         <p style="color: var(--text-sub); font-size: 0.88rem; margin-bottom: 22px; line-height: 1.6;">
             To be eligible for rewards and payouts, please verify your mobile number. This will be used to process your UPI transactions.
         </p>
@@ -44,6 +55,7 @@
                 Verify Mobile Number
             </button>
         </form>
+        {% endif %}
     </div>
 </div>
 

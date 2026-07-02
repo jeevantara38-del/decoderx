@@ -684,6 +684,8 @@ document.addEventListener("DOMContentLoaded", () => {
             answers: selectedAnswers,
             time_taken: timeTaken,
             warnings_count: warningsCount,
+            is_disqualified: isDisqualified,
+            disqualification_reason: reason,
             quiz_id: 1,
             submitted_at: new Date().toISOString()
         };
@@ -702,9 +704,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (data.success) {
                 const reasonParam = reason ? `&reason=${encodeURIComponent(reason)}` : "";
+                const dqParam = isDisqualified ? "&dq=1" : "";
                 const redir = data.needs_phone 
-                    ? `/reward_verification?score=${data.score}&total=${data.total}&time=${data.time_taken}${reasonParam}`
-                    : `/dashboard?submitted=true&score=${data.score}&total=${data.total}&time=${data.time_taken}${reasonParam}`;
+                    ? `/reward_verification?score=${data.score}&total=${data.total}&time=${data.time_taken}${reasonParam}${dqParam}`
+                    : `/dashboard?submitted=true&score=${data.score}&total=${data.total}&time=${data.time_taken}${reasonParam}${dqParam}`;
                 
                 if (isDisqualified && window.dqContinueBtn) {
                     window.dqRedirectUrl = redir;
