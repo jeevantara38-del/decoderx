@@ -408,22 +408,23 @@ def init_db():
         )
         """)
         
-        # Ensure migration: Add warnings_count to quiz_attempts if it doesn't exist
-        try:
-            cursor.execute("SELECT warnings_count FROM quiz_attempts LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN warnings_count INTEGER DEFAULT 0")
-            
-        try:
-            cursor.execute("SELECT is_disqualified FROM quiz_attempts LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN is_disqualified INTEGER DEFAULT 0")
-            
-        try:
-            cursor.execute("SELECT disqualification_reason FROM quiz_attempts LIMIT 1")
-        except sqlite3.OperationalError:
-            cursor.execute("ALTER TABLE quiz_attempts ADD COLUMN disqualification_reason TEXT")
-            
+        def add_col_if_missing(table, col, col_def):
+            try:
+                cursor.execute(f"SELECT {col} FROM {table} LIMIT 1")
+            except Exception:
+                if is_pg:
+                    db.rollback()
+                try:
+                    cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_def}")
+                except Exception as e:
+                    if is_pg:
+                        db.rollback()
+                    print(f"Error adding column {col}: {e}")
+
+        add_col_if_missing("quiz_attempts", "warnings_count", "INTEGER DEFAULT 0")
+        add_col_if_missing("quiz_attempts", "is_disqualified", "INTEGER DEFAULT 0")
+        add_col_if_missing("quiz_attempts", "disqualification_reason", "TEXT")
+        
         # Create transactions table
         cursor.execute(f"""
         CREATE TABLE IF NOT EXISTS transactions (
